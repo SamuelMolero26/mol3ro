@@ -198,6 +198,12 @@ button.os-window__control:focus-visible {
     height: 60%;
   }
 
+  .desktop-pr {
+    inset: 16% auto auto 28%;
+    width: 52%;
+    height: 62%;
+  }
+
   /* Windows float above the dock, so they can be dragged over the icons. */
   .desktop-dock {
     inset: 3.3% 2.2% auto auto;

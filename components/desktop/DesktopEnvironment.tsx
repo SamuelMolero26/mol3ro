@@ -13,7 +13,7 @@ import { DockIcon } from "@/components/ui/DockIcon";
 import { ResumeIcon } from "@/components/ui/icons";
 import { Window, type ResizeDirection } from "@/components/ui/Window";
 import { EMAIL, GITHUB_USER, RESUME_URL } from "@/lib/site";
-import { COMMAND_NAMES, PROMPT, SHELL_LINKS, useShell } from "@/lib/shell";
+import { COMMAND_NAMES, PROMPT, getShellLinkHref, useShell } from "@/lib/shell";
 
 /* Single source: --breakpoint-desktop in styles/theme.css (fallback 900px). */
 function getDesktopBreakpoint(): number {
@@ -33,7 +33,7 @@ const MIN_VISIBLE_WIDTH = 96;
 const MIN_WINDOW_WIDTH = 280;
 const MIN_WINDOW_HEIGHT = 180;
 
-const WINDOW_IDS = ["readme", "shell", "resume", "github"] as const;
+const WINDOW_IDS = ["readme", "shell", "resume", "github", "pr"] as const;
 
 type WindowId = (typeof WINDOW_IDS)[number];
 
@@ -63,6 +63,7 @@ const INITIAL_WINDOW_STATES: DesktopWindowStates = {
   shell: { isOpen: false, position: ORIGIN, size: null, zOrder: 2 },
   resume: { isOpen: false, position: ORIGIN, size: null, zOrder: 3 },
   github: { isOpen: false, position: ORIGIN, size: null, zOrder: 4 },
+  pr: { isOpen: false, position: ORIGIN, size: null, zOrder: 5 },
 };
 
 interface PointerSession {
@@ -336,19 +337,23 @@ function ShellContent() {
   return (
     <div className="shell">
       <div className="shell__scroll" ref={screenRef}>
-        {lines.map((line, index) =>
-          line.startsWith(PROMPT) ? (
-            <p key={`${index}-${line}`}>
-              <span className="shell__sigil">{PROMPT}</span>
-              &nbsp;
-              {line.slice(PROMPT.length).trimStart()}
-            </p>
-          ) : (
+        {lines.map((line, index) => {
+          if (line.startsWith(PROMPT)) {
+            return (
+              <p key={`${index}-${line}`}>
+                <span className="shell__sigil">{PROMPT}</span>
+                &nbsp;
+                {line.slice(PROMPT.length).trimStart()}
+              </p>
+            );
+          }
+          const href = getShellLinkHref(line);
+          return (
             <p key={`${index}-${line}`} className="shell__wrap">
-              {SHELL_LINKS[line] ? (
+              {href ? (
                 <a
                   className="shell__link"
-                  href={SHELL_LINKS[line]}
+                  href={href}
                   target="_blank"
                   rel="noreferrer noopener"
                 >
@@ -358,8 +363,8 @@ function ShellContent() {
                 line
               )}
             </p>
-          ),
-        )}
+          );
+        })}
         <p className="shell__hint">{COMMAND_NAMES.join(" · ")}</p>
       </div>
       <form className="shell__prompt" onSubmit={submit}>
@@ -412,6 +417,36 @@ function GithubContent() {
   );
 }
 
+function PrContent({ src }: { src: string | null }) {
+  if (!src) {
+    return (
+      <div className="pr">
+        <p className="pr__placeholder">Loading pull request…</p>
+      </div>
+    );
+  }
+  const iframeSrc = `/api/pr-html?url=${encodeURIComponent(src)}`;
+  let title = "Latest pull request";
+  try {
+    const u = new URL(src);
+    const parts = u.pathname.split("/").filter(Boolean);
+    if (parts.length >= 4) {
+      title = `Latest pull request — ${parts[0]}/${parts[1]}#${parts[3]}`;
+    }
+  } catch {}
+  return (
+    <div className="pr">
+      <iframe
+        src={iframeSrc}
+        className="pr__frame"
+        loading="lazy"
+        sandbox="allow-same-origin allow-popups"
+        title={title}
+      />
+    </div>
+  );
+}
+
 /* ── Dock glyphs ── */
 
 function ReadmeGlyph() {
@@ -427,6 +462,18 @@ function GithubGlyph() {
   return (
     <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
       <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+    </svg>
+  );
+}
+
+function PrGlyph() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="5" cy="5" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="11" cy="11" r="1.5" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M5 6.5v2.2c0 1.1 0.7 1.9 1.9 1.9H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M11 9.5V6.8c0-1.1-0.7-1.9-1.9-1.9H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M8 5.5l1.2 1.2L8 8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -463,13 +510,25 @@ const WINDOWS: Record<WindowId, WindowDefinition> = {
     Glyph: GithubGlyph,
     Content: GithubContent,
   },
+  pr: {
+    title: "pull request",
+    dockLabel: "pr",
+    Glyph: PrGlyph,
+    Content: () => <PrContent src={null} />,
+  },
 };
 
 export function DesktopEnvironment() {
   const [windowStates, setWindowStates] = useState(INITIAL_WINDOW_STATES);
+  const [prSrc, setPrSrc] = useState<string | null>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const dragSessionRef = useRef<PointerSession | null>(null);
   const resizeSessionRef = useRef<ResizeSession | null>(null);
+
+  function openPrWindow(url: string) {
+    setPrSrc(url);
+    setWindowStates((current) => bringWindowToFront(current, "pr"));
+  }
 
   function closeWindow(windowId: WindowId) {
     setWindowStates((current) => ({
@@ -651,6 +710,17 @@ export function DesktopEnvironment() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    function handleOpenPr(event: Event) {
+      const detail = (event as CustomEvent<{ url: string }>).detail;
+      if (!detail || typeof detail.url !== "string") return;
+      openPrWindow(detail.url);
+    }
+    window.addEventListener("mol3ro:open-pr", handleOpenPr as EventListener);
+    return () =>
+      window.removeEventListener("mol3ro:open-pr", handleOpenPr as EventListener);
+  }, []);
+
   return (
     <div className="app-texture flex h-dvh min-h-0 flex-col overflow-hidden">
       <TopBar />
@@ -701,7 +771,7 @@ export function DesktopEnvironment() {
                 onPointerCancel: endResize,
               }}
             >
-              <Content />
+              {windowId === "pr" ? <PrContent src={prSrc} /> : <Content />}
             </Window>
           );
         })}
