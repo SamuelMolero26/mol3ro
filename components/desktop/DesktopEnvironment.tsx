@@ -726,7 +726,7 @@ export function DesktopEnvironment() {
       <TopBar />
       <div ref={workspaceRef} className="desktop-workspace">
         <aside className="desktop-dock" aria-label="Open files">
-          {WINDOW_IDS.map((windowId) => {
+          {WINDOW_IDS.filter((id) => id !== "pr").map((windowId) => {
             const { dockLabel, Glyph } = WINDOWS[windowId];
             return (
               <DockIcon
