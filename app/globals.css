@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/* Design tokens must stay outside a cascade layer: `@theme` feeds Tailwind. */
+@import "../styles/theme.css";
+
+/* Component styles sit in the `components` layer so Tailwind utilities can
+   still override them at the call site. */
+@import "../styles/base.css" layer(base);
+@import "../styles/chrome.css" layer(components);
+@import "../styles/desktop.css" layer(components);
+@import "../styles/windows.css" layer(components);
+@import "../styles/mobile.css" layer(components);

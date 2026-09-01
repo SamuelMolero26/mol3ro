@@ -1,0 +1,296 @@
+/* Desktop shell: menu bars, window frame, window placement, dock. */
+
+/* ── Bars ── */
+
+.os-topbar {
+  display: flex;
+  height: 35px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: 15px;
+  border-bottom: 1px solid var(--color-border-light);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-regular);
+}
+
+.os-bottombar {
+  display: flex;
+  height: 29px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: 15px;
+  border-top: 1px solid var(--color-border-light);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-tiny);
+  line-height: var(--leading-chrome);
+}
+
+/* ── Window frame ── */
+
+.os-window {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(from var(--color-accent) r g b / 0.9);
+  background: var(--color-window);
+  box-shadow: var(--shadow-window);
+}
+
+.os-window__titlebar {
+  position: relative;
+  display: flex;
+  height: 30px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 8px;
+  border-bottom: 1px solid rgb(from var(--color-accent) r g b / 0.9);
+}
+
+.os-window__title {
+  overflow: hidden;
+  padding-inline: 32px;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-compact);
+  font-weight: 600;
+  letter-spacing: var(--tracking-title);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.os-window__control {
+  position: absolute;
+  left: 8px;
+  display: grid;
+  width: 17px;
+  height: 17px;
+  place-items: center;
+  border: 1px solid var(--color-text);
+  background: rgb(from var(--color-chrome) r g b / 0.6);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  line-height: 1;
+}
+
+button.os-window__control:hover {
+  background: var(--color-chrome);
+}
+
+button.os-window__control:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--color-accent);
+}
+
+.os-window__zoom {
+  position: absolute;
+  right: 8px;
+  width: 17px;
+  height: 17px;
+  border: 1px solid var(--color-border-light);
+  background: rgb(from var(--color-chrome) r g b / 0.3);
+}
+
+.os-window__body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.os-window__resize-layer {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+
+.os-window__handle {
+  pointer-events: auto;
+  position: absolute;
+  touch-action: none;
+}
+
+.os-window__handle--n { inset-inline: 12px; top: 0; height: 6px; cursor: n-resize; }
+.os-window__handle--s { inset-inline: 12px; bottom: 0; height: 6px; cursor: s-resize; }
+.os-window__handle--w { inset-block: 12px; left: 0; width: 6px; cursor: w-resize; }
+.os-window__handle--e { inset-block: 12px; right: 0; width: 6px; cursor: e-resize; }
+.os-window__handle--nw { top: 0; left: 0; width: 12px; height: 12px; cursor: nw-resize; }
+.os-window__handle--ne { top: 0; right: 0; width: 12px; height: 12px; cursor: ne-resize; }
+.os-window__handle--sw { bottom: 0; left: 0; width: 12px; height: 12px; cursor: sw-resize; }
+.os-window__handle--se { bottom: 0; right: 0; width: 12px; height: 12px; cursor: se-resize; }
+
+/* ── Workspace and window placement ── */
+
+.desktop-workspace {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+}
+
+@media (width < 900px) {
+  .os-window__resize-layer {
+    display: none;
+  }
+
+  /* The layout flows below the drag breakpoint, so drop any inline geometry
+     left over from dragging or resizing at a wider viewport. */
+  .desktop-managed-window {
+    width: auto !important;
+    height: auto !important;
+  }
+}
+
+@media (width >= 900px) {
+  .desktop-readme,
+  .desktop-shell,
+  .desktop-resume,
+  .desktop-github,
+  .desktop-dock {
+    position: absolute;
+  }
+
+  .desktop-managed-window {
+    transform: translate3d(var(--window-x, 0), var(--window-y, 0), 0);
+  }
+
+  .os-window__titlebar {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .os-window__titlebar:active {
+    cursor: grabbing;
+  }
+
+  .os-window__titlebar [data-window-control] {
+    cursor: default;
+  }
+
+  .desktop-readme {
+    inset: 3.7% auto auto 2.9%;
+    width: 40.1%;
+    height: 66%;
+  }
+
+  .desktop-shell {
+    inset: 57.7% auto auto 2.9%;
+    width: 60.1%;
+    height: 39.4%;
+  }
+
+  .desktop-resume {
+    inset: 10% auto auto 54%;
+    width: 31.5%;
+    height: 80%;
+  }
+
+  .desktop-github {
+    inset: 22% auto auto 20%;
+    width: 60%;
+    height: 60%;
+  }
+
+  /* Windows float above the dock, so they can be dragged over the icons. */
+  .desktop-dock {
+    inset: 3.3% 2.2% auto auto;
+    width: 8.6%;
+    height: auto;
+    z-index: 0;
+  }
+}
+
+@media (width >= 768px) and (width < 900px) {
+  .desktop-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 0.9fr);
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .desktop-dock {
+    display: none;
+  }
+}
+
+/* ── Dock ── */
+
+.desktop-dock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-block: 4px;
+}
+
+.dock-icon {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.dock-icon:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.dock-icon__tile {
+  display: grid;
+  width: 50px;
+  height: 55px;
+  place-items: center;
+  border: 1px solid rgb(from var(--color-accent) r g b / 0.8);
+  background-color: var(--color-window-raised);
+  color: var(--color-accent);
+}
+
+.dock-icon[aria-pressed="true"] .dock-icon__tile {
+  border-color: var(--color-accent);
+  background-color: var(--color-bg);
+  background-image: var(--stripes-diagonal);
+}
+
+.dock-icon__glyph {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+}
+
+.dock-icon__glyph svg {
+  width: 24px;
+  height: 24px;
+}
+
+.dock-icon__label {
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-tiny);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+/* ── Dock glyphs drawn in CSS ── */
+
+.glyph-shell {
+  font-family: var(--font-mono);
+  font-size: var(--text-xlarge);
+  font-weight: 700;
+}
+
+.glyph-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

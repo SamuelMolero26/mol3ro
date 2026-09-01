@@ -1,0 +1,109 @@
+/* Design tokens. Every literal value in the UI is defined here or in the
+   component stylesheet that owns it — never inline in a component. */
+@theme {
+  /* ── Palette: Paper "Personal Website UI mock ups" ── */
+  --color-canvas: #0e1017;
+  --color-bg: #101118;
+  --color-window: #151821;
+  --color-window-raised: #161923;
+  --color-chrome: #2b3045;
+  --color-chrome-high: #565c74;
+  --color-window-border: #353b52;
+  --color-border-light: #4c546b;
+  --color-text: #cfd6e4;
+  --color-text-bright: #d4d9f0;
+  --color-text-cool: #bfcff4;
+  --color-text-muted: #9da2b9;
+  --color-text-dim: #737997;
+  --color-accent: #98aaf0;
+  --color-aqua-from: #2359b1;
+  --color-aqua: #307aeb;
+  --color-aqua-to: #5999f5;
+  --color-aqua-highlight: #b7d3fc;
+  --color-cream: #edece5;
+  --color-cream-deep: #d4d0c5;
+  --color-ink: #14161e;
+  --color-silver: #9da0af;
+
+  /* ── Typefaces ── */
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --font-serif: var(--font-eb-garamond), ui-serif, serif;
+  --font-display: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* ── Fixed type ramp: OS chrome, which must not scale with the viewport ── */
+  --text-nano: 7px;
+  --text-micro: 8px;
+  --text-tiny: 9px;
+  --text-small: 10px;
+  --text-compact: 11px;
+  --text-regular: 12px;
+  --text-medium: 13px;
+  --text-large: 14px;
+  --text-xlarge: 15px;
+
+  /* ── Fluid type ramp: window content, which scales with the desktop ── */
+  --text-fluid-hero: clamp(20px, 2.45vw, 36px);
+  --text-fluid-lead: clamp(11px, 1.15vw, 16px);
+  --text-fluid-tag: clamp(10px, 1.15vw, 15px);
+  --text-fluid-body: clamp(10px, 1.15vw, 14px);
+  --text-fluid-code: clamp(10px, 1.15vw, 13px);
+  --text-fluid-meta: clamp(10px, 1.05vw, 13px);
+  --text-fluid-micro: clamp(9px, 0.85vw, 11px);
+  --text-phone-title: clamp(20px, 6.4vw, 25px);
+  --text-phone-action: clamp(10px, 3vw, 12px);
+
+  /* ── Line heights ── */
+  --leading-display: 1.08;
+  --leading-chrome: 1.15;
+  --leading-terminal: 1.7;
+  --leading-prose: 1.75;
+  --leading-data: 1.8;
+
+  /* ── Letter spacing, named for the role each step plays ── */
+  --tracking-caps: 0.06em;
+  --tracking-caps-wide: 0.08em;
+  --tracking-heading: 0.12em;
+  --tracking-brand: 0.14em;
+  --tracking-logo: 0.15em;
+  --tracking-display: 0.16em;
+  --tracking-tab: 0.2em;
+  --tracking-title: 0.22em;
+
+  /* ── Chrome geometry ── */
+  --spacing-cta: clamp(36px, 4.4vw, 50px);
+  --spacing-prompt: clamp(34px, 4vw, 48px);
+
+  /* ── Radii ── */
+  --radius-aqua: 14px;
+  --radius-aqua-inner: 12px;
+
+  /* ── Elevation ── */
+  --shadow-window: 0 9px 24px rgb(14 16 23 / 0.42);
+  --shadow-aqua:
+    inset 0 1px 0 rgb(255 255 255 / 0.75), inset 0 -2px 0 rgb(14 16 23 / 0.28),
+    0 3px 8px rgb(29 92 189 / 0.34);
+  --shadow-card-compact: inset 0 0 20px rgb(212 208 197 / 0.55);
+
+  /* Desktop windows become draggable here. Read at runtime via
+     getDesktopBreakpoint() in DesktopEnvironment.tsx — single source. */
+  --breakpoint-desktop: 900px;
+}
+
+/* Raw patterns: referenced by several component stylesheets, so they cannot
+   live inside a single component's rule. */
+:root {
+  --stripes-diagonal: repeating-linear-gradient(
+    135deg,
+    rgb(76 84 107 / 13%) 0,
+    rgb(76 84 107 / 13%) 4px,
+    transparent 4px,
+    transparent 9px
+  );
+  --stripes-vertical: repeating-linear-gradient(
+    90deg,
+    rgb(53 59 82 / 28%) 0,
+    rgb(53 59 82 / 28%) 6px,
+    transparent 6px,
+    transparent 13px
+  );
+}
