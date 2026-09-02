@@ -6,8 +6,6 @@
  */
 
 export const env = {
-  /** Optional GitHub token for /api/latest-repo (higher rate limit). */
+  /** Optional GitHub token for the GitHub API routes (higher rate limit). */
   githubToken: process.env.GITHUB_TOKEN ?? "",
 } as const;
-
-export const hasGithubToken = () => env.githubToken.length > 0;

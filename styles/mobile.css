@@ -6,13 +6,20 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 8px;
+  padding: 6px;
 }
 
 .phone-shell {
-  width: min(84vw, calc((100dvh - 16px) * 0.62), 520px);
+  /* Flex container so .phone-bezel's flex:1/min-height:0 actually apply —
+     without it the inner column is content-sized and each tab resizes the handset. */
+  display: flex;
+  flex-direction: column;
+  /* Width is the binding term on a handset; the dvh term only takes over on
+     short/landscape viewports. Raise both caps together — max-width gates
+     the min() result, so bumping one alone does nothing. */
+  width: min(94vw, calc((100dvh - 12px) * 0.62), 560px);
   min-width: 0;
-  max-width: 84vw;
+  max-width: 94vw;
   flex: none;
   aspect-ratio: 0.62;
   overflow: hidden;
@@ -352,23 +359,13 @@
   background: var(--color-accent);
 }
 
-.mobile-brand__context {
-  position: absolute;
-  right: 12px;
-  max-width: 32%;
-  color: var(--color-text-muted);
-  font-size: var(--text-micro);
-  line-height: 1.25;
-  text-align: right;
-}
-
 /* ── Tab bar ── */
 
 .mobile-tabs {
   display: grid;
   height: 70px;
   flex-shrink: 0;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   padding: 8px 8px 0;
   border-bottom: 1px solid var(--color-window-border);
 }
@@ -391,8 +388,8 @@
 
 .mobile-tab__tile {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   place-items: center;
   border: 1px solid var(--color-border-light);
   background: var(--color-window);
@@ -487,8 +484,30 @@
 }
 
 .mobile-cta-slot {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
   flex-shrink: 0;
   padding-inline: 8px;
+}
+
+.mobile-cta-slot .aqua-button--block {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-cta__icon {
+  display: inline-grid;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+
+.mobile-cta__icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .mobile-cta {
@@ -512,10 +531,12 @@
 
 .mobile-card__face {
   display: flex;
-  aspect-ratio: 1.9;
-  min-height: 0;
+  /* Grows into the body instead of leaving slack under the actions. The
+     identity block is margin-block:auto, so it stays optically centred as
+     the face gets taller; head pins top, meta pins bottom. */
+  flex: 1;
+  min-height: 130px;
   min-width: 0;
-  flex-shrink: 0;
   flex-direction: column;
   overflow: hidden;
   padding: 12px;
@@ -544,8 +565,8 @@
   line-height: 1;
 }
 
-.mobile-card__role {
-  margin-top: 10px;
+.mobile-card__school {
+  margin-top: 8px;
   font-size: var(--text-compact);
   letter-spacing: var(--tracking-brand);
   text-transform: uppercase;
@@ -568,9 +589,12 @@
 }
 
 .mobile-card__action {
-  height: 36px;
+  display: grid;
+  height: 34px;
+  place-items: center;
   font-size: var(--text-small);
   font-weight: 600;
+  text-decoration: none;
 }
 
 /* ── shell ── */
@@ -585,7 +609,7 @@
 
 .mobile-shell__screen {
   display: flex;
-  min-height: 145px;
+  min-height: 0;
   flex: 1;
   flex-direction: column;
   justify-content: flex-end;
@@ -625,19 +649,6 @@
   box-shadow: none;
 }
 
-.mobile-shell__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 12px;
-  border-top: 1px solid var(--color-window-border);
-}
-
-.mobile-shell__chip {
-  padding: 8px 12px;
-  font-size: var(--text-compact);
-}
-
 /* ── resume ── */
 
 .mobile-resume {
@@ -649,18 +660,19 @@
 }
 
 .mobile-resume__preview {
-  display: grid;
-  min-height: 165px;
+  display: block;
+  min-height: 0;
   flex: 1;
-  place-items: center;
+  overflow-y: auto;
   border: 1px solid var(--color-border-light);
+  background: #ffffff;
+  -webkit-overflow-scrolling: touch;
 }
 
-.mobile-resume__caption {
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-compact);
-  letter-spacing: var(--tracking-display);
+.mobile-resume__page {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .mobile-resume__download {
@@ -670,6 +682,94 @@
   place-items: center;
   font-family: var(--font-mono);
   font-size: var(--text-regular);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* ── repos ── */
+
+.mobile-repos {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.mobile-repos--message {
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-repos__note {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-compact);
+}
+
+.mobile-repos__list {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mobile-repo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 9px;
+  border: 1px solid var(--color-border-light);
+  background: var(--color-window-raised);
+  text-decoration: none;
+}
+
+.mobile-repo:active {
+  border-color: var(--color-accent);
+}
+
+.mobile-repo__name {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-repo__desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: var(--text-compact);
+  line-height: 1.35;
+}
+
+.mobile-repo__meta {
+  display: flex;
+  gap: 10px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-tiny);
+}
+
+.mobile-repos__all {
+  display: grid;
+  height: 32px;
+  flex-shrink: 0;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
   font-weight: 600;
   text-decoration: none;
 }
