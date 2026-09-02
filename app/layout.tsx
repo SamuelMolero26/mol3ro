@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { EB_Garamond, Geist_Mono, JetBrains_Mono } from "next/font/google";
 import { DOMAIN } from "@/lib/site";
 import "./globals.css";
@@ -36,7 +37,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${geistMono.variable} ${jetbrainsMono.variable} ${ebGaramond.variable} h-full antialiased`}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
