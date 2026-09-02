@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { EB_Garamond, Geist_Mono, JetBrains_Mono } from "next/font/google";
+import { DOMAIN } from "@/lib/site";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -25,7 +26,7 @@ const description =
 export const metadata: Metadata = {
   title,
   description,
-  metadataBase: new URL("https://mol3ro.vercel.app"),
+  metadataBase: new URL(`https://${DOMAIN}`),
   openGraph: { title, description, type: "website" },
 };
 
