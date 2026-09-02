@@ -94,6 +94,10 @@ export async function GET(request: Request): Promise<Response> {
     }
     html = processed;
 
+    if (new TextEncoder().encode(html).length > MAX_BYTES) {
+      throw new Error("too large");
+    }
+
     // Strip all scripts — GitHub bundle would boot React and fire
     // same-origin requests that resolve against this site.
     html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
