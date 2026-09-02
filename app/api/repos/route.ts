@@ -52,10 +52,10 @@ export async function GET() {
       `https://api.github.com/users/${GITHUB_USER}/repos?sort=pushed&per_page=60`,
       { headers, next: { revalidate: 3600 } },
     );
-    if (!res.ok) return Response.json({ repos: [] });
+    if (!res.ok) return Response.json({ repos: [] }, { status: 502 });
 
     const raw = await res.json();
-    if (!Array.isArray(raw)) return Response.json({ repos: [] });
+    if (!Array.isArray(raw)) return Response.json({ repos: [] }, { status: 502 });
 
     const repos = (raw as GitHubRepo[])
       .filter((repo) => !repo.fork && !repo.archived)
@@ -66,6 +66,6 @@ export async function GET() {
 
     return Response.json({ repos });
   } catch {
-    return Response.json({ repos: [] });
+    return Response.json({ repos: [] }, { status: 500 });
   }
 }
