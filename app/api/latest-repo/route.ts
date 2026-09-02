@@ -1,10 +1,11 @@
+import { env } from "@/lib/env";
 import { GITHUB_USER } from "@/lib/site";
 export const revalidate = 3600;
 export async function GET() {
   const fallback = `https://github.com/${GITHUB_USER}`;
   try {
     const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
-    const token = process.env.GITHUB_TOKEN;
+    const token = env.githubToken;
     if (token) headers.Authorization = `Bearer ${token}`;
     // 1) Try latest PR authored by user (search issues)
     const prRes = await fetch(
