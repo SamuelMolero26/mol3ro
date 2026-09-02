@@ -4,7 +4,7 @@ import { useState, type ReactElement } from "react";
 import { AquaButton } from "@/components/ui/AquaButton";
 import { CardIcon, ResumeIcon, ShellIcon } from "@/components/ui/icons";
 import { EMAIL, GITHUB_URL, RESUME_URL } from "@/lib/site";
-import { COMMAND_NAMES, PROMPT, SHELL_LINKS, useShell } from "@/lib/shell";
+import { COMMAND_NAMES, PROMPT, getShellLinkHref, useShell } from "@/lib/shell";
 
 type CopyStatus = "copied" | "failed" | null;
 type TabId = "card" | "shell" | "resume";
@@ -133,7 +133,7 @@ function ShellTab() {
       );
     }
 
-    const href = SHELL_LINKS[line];
+    const href = getShellLinkHref(line);
     if (!href) {
       return <p key={`${index}-${line}`}>{line}</p>;
     }
