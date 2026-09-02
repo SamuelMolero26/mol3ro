@@ -146,11 +146,13 @@ function ReposTab() {
   useEffect(() => {
     let cancelled = false;
     fetch("/api/repos")
-      .then((res) => res.json())
-      .then((data: { repos?: RepoSummary[] }) => {
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to fetch repos");
+        return (await res.json()) as { repos?: RepoSummary[] };
+      })
+      .then((data) => {
         if (cancelled) return;
-        const repos = data.repos ?? [];
-        setState(repos.length ? { status: "ready", repos } : { status: "failed" });
+        setState({ status: "ready", repos: data.repos ?? [] });
       })
       .catch(() => {
         if (!cancelled) setState({ status: "failed" });
