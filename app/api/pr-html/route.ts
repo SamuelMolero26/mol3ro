@@ -62,6 +62,11 @@ export async function GET(request: Request): Promise<Response> {
         iterations++;
         continue;
       }
+      if (srcUrl.origin !== "https://github.com") {
+        processed = processed.replace(full, "");
+        iterations++;
+        continue;
+      }
       try {
         const fragRes = await fetch(srcUrl, {
           headers: {
