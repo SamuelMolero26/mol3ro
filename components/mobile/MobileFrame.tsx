@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState, type ReactElement } from "react";
 import Image from "next/image";
 import { AquaButton } from "@/components/ui/AquaButton";
 import { CardIcon, LinkedInIcon, ReposIcon, ResumeIcon, ShellIcon } from "@/components/ui/icons";
-import type { RepoSummary } from "@/app/api/repos/route";
 import {
   DOMAIN,
   EMAIL,
@@ -26,6 +25,13 @@ import { useClock } from "@/lib/clock";
 
 type CopyStatus = "copied" | "failed" | null;
 type TabId = "card" | "repos" | "shell" | "resume";
+interface RepoSummary {
+  name: string;
+  description: string | null;
+  url: string;
+  language: string | null;
+  stars: number;
+}
 
 interface TabDefinition {
   id: TabId;
