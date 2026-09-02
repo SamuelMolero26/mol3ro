@@ -175,9 +175,9 @@ button.os-window__control:focus-visible {
   }
 
   .desktop-readme {
-    inset: 3.7% auto auto 2.9%;
-    width: 40.1%;
-    height: 66%;
+    inset: 4% auto auto 3%;
+    width: 40%;
+    height: 70%;
   }
 
   .desktop-shell {

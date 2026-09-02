@@ -12,7 +12,7 @@ import { AquaButton } from "@/components/ui/AquaButton";
 import { DockIcon } from "@/components/ui/DockIcon";
 import { ResumeIcon } from "@/components/ui/icons";
 import { Window, type ResizeDirection } from "@/components/ui/Window";
-import { EMAIL, GITHUB_USER, RESUME_URL } from "@/lib/site";
+import { EMAIL, GITHUB_USER, RESUME_URL, NAME, ROLE, LOCATION, FOCUS, SCHOOL, GRADUATION } from "@/lib/site";
 import { COMMAND_NAMES, PROMPT, getShellLinkHref, useShell } from "@/lib/shell";
 import { useClock } from "@/lib/clock";
 
@@ -262,33 +262,40 @@ function ReadmeContent() {
   return (
     <div className="readme">
       <h1 className="readme__name">
-        Samuel
+        {NAME.split(" ")[0]}
         <br />
-        Molero
+        {NAME.split(" ")[1]}
       </h1>
-      <p className="readme__role">software engineer · new grad</p>
+      <p className="readme__role">{ROLE.toLowerCase()} · new grad</p>
       <p className="readme__bio">
-        Texas A&amp;M, Dec 2026. B.S. Industrial Distribution, minors in CS and
-        statistics. Two internships at QTS Data Centers. Backend and infra. The
-        shell below knows the rest.
+        <span className="block">
+          {SCHOOL} · Graduating {GRADUATION}
+        </span>
+        <span className="block">
+          1 year of industry experience (SWE &amp; ML/Data)
+        </span>
+        <span className="block">
+         Building, learning, and looking for the next challenge
+        </span>
       </p>
       <dl className="readme__facts">
         <div className="readme__fact">
           <dt>Location</dt>
-          <dd>college station, tx</dd>
+          <dd>{LOCATION}</dd>
         </div>
         <div className="readme__fact">
           <dt>Stack</dt>
-          <dd>go · python · aws</dd>
+          <dd>go · python · typescript · aws · docker</dd>
         </div>
         <div className="readme__fact">
-          <dt>Status</dt>
+          <dt>Target Roles</dt>
           <dd className="is-accent">
-            open to offers
+            software engineering · tech consulting
             <span className="caret readme__caret" aria-hidden="true" />
           </dd>
         </div>
       </dl>
+    
       <AquaButton
         href={`mailto:${EMAIL}?subject=Let%27s%20work%20together`}
         fullWidth
@@ -302,8 +309,8 @@ function ReadmeContent() {
 
 const SHELL_INITIAL_LINES = [
   `${PROMPT} whoami`,
-  "samuel molero — software engineer, new grad",
-  "College Station, TX · backend & full-stack · open to offers",
+  `${NAME.toLowerCase()} — ${ROLE.toLowerCase()}, ${GRADUATION.toLowerCase()} grad`,
+  `${LOCATION} · ${FOCUS.toLowerCase()} · open to offers`,
 ];
 
 function ShellContent() {

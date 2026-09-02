@@ -1,7 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { DOMAIN, EMAIL, RESUME_URL, PHONE, LINKEDIN } from "@/lib/site";
+import { RESUME_TEXT_LINES } from "@/lib/resume";
+import {
+  DOMAIN,
+  EMAIL,
+  FOCUS,
+  GRADUATION,
+  LINKEDIN,
+  LOCATION,
+  NAME,
+  PHONE,
+  RESUME_URL,
+  ROLE,
+} from "@/lib/site";
 
 export const PROMPT = "➜";
 
@@ -60,14 +72,87 @@ function preloadLatestUrl() {
   void fetchLatestUrl();
 }
 
+/* Files intentionally exposed through the simulated shell. Text files can be
+   printed; binary files point to the command that opens them safely. */
 
+const VIRTUAL_FILE_KIND = {
+  TEXT: "text",
+  BINARY: "binary",
+} as const;
 
-export const COMMANDS: Record<string, () => string[] | Promise<string[]>> = {
+type VirtualFileKind =
+  (typeof VIRTUAL_FILE_KIND)[keyof typeof VIRTUAL_FILE_KIND];
+
+interface VirtualFile {
+  kind: VirtualFileKind;
+  lines: readonly string[];
+  hint?: string;
+}
+
+const VIRTUAL_FILES: Readonly<Partial<Record<string, VirtualFile>>> = {
+  "resume.txt": {
+    kind: VIRTUAL_FILE_KIND.TEXT,
+    lines: RESUME_TEXT_LINES,
+  },
+  "resume.pdf": {
+    kind: VIRTUAL_FILE_KIND.BINARY,
+    lines: [],
+    hint: "try: resume",
+  },
+  "card.vcf": {
+    kind: VIRTUAL_FILE_KIND.TEXT,
+    lines: [
+      "BEGIN:VCARD",
+      "VERSION:4.0",
+      `FN:${NAME}`,
+      `TITLE:${ROLE}`,
+      `EMAIL:${EMAIL}`,
+      `TEL:${PHONE}`,
+      `URL:${LINKEDIN}`,
+      "END:VCARD",
+    ],
+  },
+};
+
+function readVirtualFiles(paths: readonly string[]): string[] {
+  if (paths.length === 0) {
+    return [
+      "cat: standard input is unavailable in this shell",
+      "try: cat <file>",
+    ];
+  }
+
+  return paths.flatMap((path) => {
+    const file = Object.hasOwn(VIRTUAL_FILES, path)
+      ? VIRTUAL_FILES[path]
+      : undefined;
+
+    if (!file) {
+      return [`cat: ${path}: No such file or directory`];
+    }
+
+    if (file.kind === VIRTUAL_FILE_KIND.BINARY) {
+      return [
+        `cat: ${path}: binary output suppressed`,
+        ...(file.hint ? [file.hint] : []),
+      ];
+    }
+
+    return file.lines;
+  });
+}
+
+type CommandHandler = (
+  args: readonly string[],
+) => string[] | Promise<string[]>;
+
+export const COMMANDS: Record<string, CommandHandler> = {
   whoami: () => [
-    "samuel molero — software engineer, new grad",
-    "College Station, TX · backend & full-stack · open to offers",
+    `${NAME.toLowerCase()} — ${ROLE.toLowerCase()}, ${GRADUATION.toLowerCase()} grad`,
+    `${LOCATION} · ${FOCUS.toLowerCase()} · open to offers`,
   ],
-  ls: () => ["resume.pdf", "card.vcf"],
+  ls: () => Object.keys(VIRTUAL_FILES),
+  cat: readVirtualFiles,
   contact: () => [
     `email: ${EMAIL}`,
     `phone: ${PHONE}`,
@@ -188,19 +273,21 @@ export function useShell(initialLines: string[]) {
   }, [lines]);
 
   function run(command: string) {
-    if (command === "clear") {
+    const [commandName = "", ...args] = command.split(/\s+/);
+
+    if (commandName === "clear") {
       setLines([]);
       return;
     }
 
     const echo = `${PROMPT} ${command}`;
-    const handler = COMMANDS[command];
+    const handler = COMMANDS[commandName];
 
     if (!handler) {
       setLines((previous) => [
         ...previous,
         echo,
-        `zsh: command not found: ${command}`,
+        `zsh: command not found: ${commandName}`,
         `try: ${COMMAND_NAMES.join(", ")}`,
       ]);
       return;
@@ -208,7 +295,7 @@ export function useShell(initialLines: string[]) {
 
     let output: string[] | Promise<string[]>;
     try {
-      output = handler();
+      output = handler(args);
     } catch {
       setLines((previous) => [...previous, echo, "command failed — try again"]);
       return;
