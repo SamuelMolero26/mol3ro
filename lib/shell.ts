@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { EMAIL, RESUME_URL, PHONE, LINKEDIN } from "@/lib/site";
+import { DOMAIN, EMAIL, RESUME_URL, PHONE, LINKEDIN } from "@/lib/site";
 
 export const PROMPT = "➜";
 
 export const PR_RE = /^https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/\d+\/?$/;
 
-export type OpenPrDetail = { url: string };
+type OpenPrDetail = { url: string };
 
 function getDesktopBreakpoint(): number {
   if (typeof window === "undefined") return 900;
@@ -54,7 +54,7 @@ function fetchLatestUrl(): Promise<string | null> {
   return latestFetchInFlight;
 }
 
-export function preloadLatestUrl() {
+function preloadLatestUrl() {
   if (typeof window === "undefined") return;
   if (cachedLatestUrl || latestFetchInFlight) return;
   void fetchLatestUrl();
@@ -65,7 +65,7 @@ export function preloadLatestUrl() {
 export const COMMANDS: Record<string, () => string[] | Promise<string[]>> = {
   whoami: () => [
     "samuel molero — software engineer, new grad",
-    "San Antonio, TX · backend & FullStack · open to offers",
+    "College Station, TX · backend & full-stack · open to offers",
   ],
   ls: () => ["resume.pdf", "card.vcf"],
   contact: () => [
@@ -73,7 +73,7 @@ export const COMMANDS: Record<string, () => string[] | Promise<string[]>> = {
     `phone: ${PHONE}`,
     `linkedin: ${LINKEDIN}`,
   ],
-  resume: () => ["one page, pdf →", `molero.dev${RESUME_URL}`],
+  resume: () => ["one page, pdf →", `${DOMAIN}${RESUME_URL}`],
   latest: () => {
     // Fast path: cached url can be opened synchronously, so popup blockers
     // see it as a user gesture. Keep the fetch in the background to refresh.
@@ -156,11 +156,11 @@ export const COMMAND_NAMES = Object.keys(COMMANDS);
  * COMMANDS, so they are known strings. Swap in a regex only if free-form text
  * ever needs linking.
  */
-export const SHELL_LINKS: Record<string, string> = {
+const SHELL_LINKS: Record<string, string> = {
   [`email: ${EMAIL}`]: `mailto:${EMAIL}`,
   [`phone: ${PHONE}`]: `tel:${PHONE.replace(/\D/g, "")}`,
   [`linkedin: ${LINKEDIN}`]: LINKEDIN,
-  [`molero.dev${RESUME_URL}`]: RESUME_URL,
+  [`${DOMAIN}${RESUME_URL}`]: RESUME_URL,
 };
 
 export function getShellLinkHref(line: string): string | null {

@@ -6,10 +6,13 @@ interface AquaProps {
   fullWidth?: boolean;
   /* An href renders an anchor; otherwise it is a button. */
   href?: string;
+  /* Only meaningful alongside href. */
+  target?: string;
+  rel?: string;
   onClick?: () => void;
 }
 
-export function AquaButton({ children, className, fullWidth, href, onClick }: AquaProps) {
+export function AquaButton({ children, className, fullWidth, href, target, rel, onClick }: AquaProps) {
   const props = {
     className: ["aqua-button", fullWidth ? "aqua-button--block" : "", className ?? ""]
       .filter(Boolean)
@@ -23,7 +26,7 @@ export function AquaButton({ children, className, fullWidth, href, onClick }: Aq
   };
 
   return href ? (
-    <a href={href} {...props} />
+    <a href={href} target={target} rel={rel} {...props} />
   ) : (
     <button type="button" onClick={onClick} {...props} />
   );

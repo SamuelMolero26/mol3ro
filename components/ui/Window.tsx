@@ -11,7 +11,7 @@ interface PointerHandlers {
   onPointerCancel: PointerEventHandler<HTMLElement>;
 }
 
-interface WindowFrameProps {
+interface WindowProps {
   windowId: string;
   className: string;
   style: CSSProperties;
@@ -19,9 +19,6 @@ interface WindowFrameProps {
   onFocus: PointerEventHandler<HTMLElement>;
   drag: PointerHandlers;
   resize: PointerHandlers;
-}
-
-interface WindowProps extends WindowFrameProps {
   title: string;
   children: ReactNode;
 }

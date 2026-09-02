@@ -39,11 +39,6 @@
   background-image: var(--stripes-diagonal);
 }
 
-.resume-stripes {
-  background-color: var(--color-bg);
-  background-image: var(--stripes-vertical);
-}
-
 /* ── Aqua button ── */
 
 .aqua-button {

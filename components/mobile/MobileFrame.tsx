@@ -1,14 +1,31 @@
 "use client";
 
-import { useState, type ReactElement } from "react";
+import { useCallback, useEffect, useState, type ReactElement } from "react";
+import Image from "next/image";
 import { AquaButton } from "@/components/ui/AquaButton";
-import { CardIcon, ResumeIcon, ShellIcon } from "@/components/ui/icons";
-import { EMAIL, GITHUB_URL, RESUME_URL } from "@/lib/site";
+import { CardIcon, LinkedInIcon, ReposIcon, ResumeIcon, ShellIcon } from "@/components/ui/icons";
+import {
+  DOMAIN,
+  EMAIL,
+  FOCUS,
+  GITHUB_URL,
+  GITHUB_USER,
+  GRADUATION,
+  LINKEDIN,
+  LOCATION,
+  NAME,
+  PHONE,
+  RESUME_PREVIEW_URL,
+  RESUME_URL,
+  ROLE,
+  SCHOOL,
+} from "@/lib/site";
 import { COMMAND_NAMES, PROMPT, getShellLinkHref, useShell } from "@/lib/shell";
+import { useClock } from "@/lib/clock";
+import type { ReposResponse, RepoSummary } from "@/lib/github";
 
 type CopyStatus = "copied" | "failed" | null;
-type TabId = "card" | "shell" | "resume";
-
+type TabId = "card" | "repos" | "shell" | "resume";
 interface TabDefinition {
   id: TabId;
   label: string;
@@ -18,11 +35,16 @@ interface TabDefinition {
 
 const TABS: readonly TabDefinition[] = [
   { id: "card", label: "card", title: "card.vcf", Icon: CardIcon },
-  { id: "shell", label: "shell", title: "zsh — molero.dev", Icon: ShellIcon },
+  { id: "repos", label: "repos", title: `github/${GITHUB_USER}`, Icon: ReposIcon },
+  { id: "shell", label: "shell", title: `zsh — ${DOMAIN}`, Icon: ShellIcon },
   { id: "resume", label: "resume", title: "resume.pdf", Icon: ResumeIcon },
 ] as const;
 
 function StatusBar() {
+  /* Same clock as the desktop top bar. suppressHydrationWarning because the
+     server renders build-time UTC; the first interval tick corrects it. */
+  const { now, day, time } = useClock();
+
   return (
     <div className="mobile-statusbar os-titlebar">
       <span className="mobile-statusbar__signal" aria-label="AT&T 3G signal">
@@ -33,7 +55,9 @@ function StatusBar() {
         <span className="mobile-statusbar__bar" />
         <span className="mobile-statusbar__carrier">AT&amp;T&nbsp; 3G</span>
       </span>
-      <time dateTime="09:41">9:41 AM</time>
+      <time dateTime={now.toISOString()} suppressHydrationWarning>
+        {`${day}   ${time}`}
+      </time>
       <span className="mobile-statusbar__battery" aria-label="Battery full">
         <span />
       </span>
@@ -75,22 +99,15 @@ function ContactCard({
     <div className="mobile-card">
       <article className="mobile-card__face">
         <div className="mobile-card__head">
-          <span>
-            347 555
-            <br />
-            0182
-          </span>
+          <span>{PHONE}</span>
+          <span>{ROLE}</span>
         </div>
         <div className="mobile-card__identity">
-          <h3 className="mobile-card__name">Samuel Molero</h3>
-          <p className="mobile-card__role">
-            Software Engineer · New Grad
-            <br />
-            2026
-          </p>
+          <h3 className="mobile-card__name">{NAME}</h3>
+          <p className="mobile-card__school">{SCHOOL}</p>
         </div>
         <p className="mobile-card__meta">
-          {EMAIL} · College Station, TX.
+          {EMAIL} · {LOCATION}
         </p>
       </article>
       <div className="mobile-card__actions">
@@ -114,14 +131,104 @@ function ContactCard({
   );
 }
 
+
+type ReposState =
+  | { status: "loading" }
+  | { status: "ready"; repos: RepoSummary[] }
+  | { status: "empty" }
+  | { status: "failed" };
+
+function ReposTab() {
+  /* Starts in "loading" rather than setting it inside the effect — a sync
+     setState in an effect body is a cascading render (react-hooks lint). */
+  const [state, setState] = useState<ReposState>({ status: "loading" });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/repos")
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to fetch repos");
+        return (await res.json()) as Partial<ReposResponse>;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        if (data.ok === false) return setState({ status: "failed" });
+        const repos = data.repos ?? [];
+        setState(repos.length ? { status: "ready", repos } : { status: "empty" });
+      })
+      .catch(() => {
+        if (!cancelled) setState({ status: "failed" });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (state.status !== "ready") {
+    return (
+      <div className="mobile-repos mobile-repos--message">
+        <p className="mobile-repos__note">
+          {state.status === "failed"
+            ? "could not reach github"
+            : state.status === "empty"
+              ? "no public repos yet"
+              : "fetching repos…"}
+        </p>
+        <a
+          href={GITHUB_URL}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="mobile-secondary mobile-repos__all"
+        >
+          Open GitHub profile
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mobile-repos">
+      <ul className="mobile-repos__list">
+        {state.repos.map((repo) => (
+          <li key={repo.name}>
+            <a
+              href={repo.url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="mobile-repo"
+            >
+              <span className="mobile-repo__name">{repo.name}</span>
+              {repo.description && (
+                <span className="mobile-repo__desc">{repo.description}</span>
+              )}
+              <span className="mobile-repo__meta">
+                {repo.language && <span>{repo.language}</span>}
+                {repo.stars > 0 && <span>★ {repo.stars}</span>}
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+      <a
+        href={GITHUB_URL}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="mobile-secondary mobile-repos__all"
+      >
+        Full Profile
+      </a>
+    </div>
+  );
+}
+
 const INITIAL_LINES = [
-  `${PROMPT} resume`,
-  "one page, pdf →",
-  `molero.dev${RESUME_URL}`,
+  `${PROMPT} whoami`,
+  `${NAME.toLowerCase()} — ${ROLE.toLowerCase()}, ${GRADUATION.toLowerCase()} grad`,
+  `commands: ${COMMAND_NAMES.join(" · ")}`,
 ];
 
 function ShellTab() {
-  const { lines, draft, setDraft, run, submit, screenRef } = useShell(INITIAL_LINES);
+  const { lines, draft, setDraft, submit, screenRef } = useShell(INITIAL_LINES);
 
   function renderLine(line: string, index: number) {
     if (line.startsWith(PROMPT)) {
@@ -169,18 +276,6 @@ function ShellTab() {
           enterKeyHint="go"
         />
       </form>
-      <div className="mobile-shell__chips">
-        {COMMAND_NAMES.map((command) => (
-          <button
-            key={command}
-            type="button"
-            onClick={() => run(command)}
-            className="mobile-secondary mobile-shell__chip"
-          >
-            {command}
-          </button>
-        ))}
-      </div>
     </div>
   );
 }
@@ -188,15 +283,28 @@ function ShellTab() {
 function ResumeTab() {
   return (
     <div className="mobile-resume">
-      <div className="resume-stripes mobile-resume__preview">
-        <p className="mobile-resume__caption">1 page · pdf preview</p>
-      </div>
+      {/* Static first-page render: iOS Safari will not display a PDF in an
+          iframe, so a recruiter would otherwise see an empty box. */}
+      <a
+        href={RESUME_URL}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="mobile-resume__preview"
+      >
+        <Image
+          src={RESUME_PREVIEW_URL}
+          alt={`${NAME} resume, page 1`}
+          className="mobile-resume__page"
+          width={772}
+          height={1000}
+        />
+      </a>
       <a
         href={RESUME_URL}
         download
         className="mobile-secondary mobile-resume__download"
       >
-        Download resume
+        Download PDF
       </a>
     </div>
   );
@@ -207,36 +315,35 @@ export function MobileFrame() {
   const [copyStatus, setCopyStatus] = useState<CopyStatus>(null);
   const activeTab = TABS.find((tab) => tab.id === active) ?? TABS[0];
 
-  const copyEmail = async () => {
+  const copyEmail = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(EMAIL);
       setCopyStatus("copied");
     } catch {
       setCopyStatus("failed");
     }
-  };
+  }, []);
 
-  const saveContact = () => {
+  const saveContact = useCallback(() => {
     const vcard = [
       "BEGIN:VCARD",
       "VERSION:3.0",
-      "FN:Samuel Molero",
-      "ORG:Molero Systems",
-      "TITLE:Software Engineer",
+      `FN:${NAME}`,
+      `ORG:${SCHOOL}`,
+      `TITLE:${ROLE}`,
       `EMAIL:${EMAIL}`,
+      `TEL;TYPE=CELL:${PHONE}`,
+      `URL:${LINKEDIN}`,
       `URL:${GITHUB_URL}`,
-      "ADR:;;;College Station, TX;;;United States",
+      `ADR:;;;${LOCATION.replace(", ", ";")};;United States`,
+      `NOTE:${FOCUS} · ${SCHOOL} · graduating ${GRADUATION}`,
       "END:VCARD",
     ].join("\r\n");
     const anchor = document.createElement("a");
     anchor.href = `data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}`;
     anchor.download = "samuel-molero.vcf";
     anchor.click();
-  };
-
-  const contactSamuel = () => {
-    window.location.href = `mailto:${EMAIL}?subject=Let%27s%20work%20together`;
-  };
+  }, []);
 
   return (
     <div className="app-texture phone-stage">
@@ -255,7 +362,6 @@ export function MobileFrame() {
                 <span className="mobile-brand__dot" aria-hidden="true" />
                 molero
               </strong>
-              <span className="mobile-brand__context">{activeTab.title}</span>
             </div>
             <nav aria-label="Portfolio sections" className="mobile-tabs striped-surface">
               {TABS.map((tab) => (
@@ -282,12 +388,24 @@ export function MobileFrame() {
                     onSave={saveContact}
                   />
                 )}
+                {active === "repos" && <ReposTab />}
                 {active === "shell" && <ShellTab />}
                 {active === "resume" && <ResumeTab />}
               </MobileWindow>
+              {/* Persistent across every tab: at a career fair the recruiter is
+                  holding their own phone and wants to connect before walking away. */}
               <div className="mobile-cta-slot">
-                <AquaButton fullWidth onClick={contactSamuel} className="mobile-cta">
-                  Continue to hire Samuel
+                <AquaButton
+                  fullWidth
+                  href={LINKEDIN}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="mobile-cta"
+                >
+                  <span className="mobile-cta__icon" aria-hidden="true">
+                    <LinkedInIcon />
+                  </span>
+                  Connect on LinkedIn
                 </AquaButton>
               </div>
             </div>

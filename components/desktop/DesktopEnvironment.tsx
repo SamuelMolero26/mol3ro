@@ -14,6 +14,7 @@ import { ResumeIcon } from "@/components/ui/icons";
 import { Window, type ResizeDirection } from "@/components/ui/Window";
 import { EMAIL, GITHUB_USER, RESUME_URL } from "@/lib/site";
 import { COMMAND_NAMES, PROMPT, getShellLinkHref, useShell } from "@/lib/shell";
+import { useClock } from "@/lib/clock";
 
 /* Single source: --breakpoint-desktop in styles/theme.css (fallback 900px). */
 function getDesktopBreakpoint(): number {
@@ -61,7 +62,7 @@ const ORIGIN: WindowPosition = { x: 0, y: 0 };
 const INITIAL_WINDOW_STATES: DesktopWindowStates = {
   readme: { isOpen: true, position: ORIGIN, size: null, zOrder: 1 },
   shell: { isOpen: false, position: ORIGIN, size: null, zOrder: 2 },
-  resume: { isOpen: false, position: ORIGIN, size: null, zOrder: 3 },
+  resume: { isOpen: true, position: ORIGIN, size: null, zOrder: 3 },
   github: { isOpen: false, position: ORIGIN, size: null, zOrder: 4 },
   pr: { isOpen: false, position: ORIGIN, size: null, zOrder: 5 },
 };
@@ -229,35 +230,9 @@ function windowStyle({ position, size, zOrder }: DesktopWindowState) {
   } as CSSProperties;
 }
 
-/* "thu 19 aug   11:04" in the viewer's own locale-independent shape. */
-function formatClock(date: Date) {
-  const day = date
-    .toLocaleDateString("en-GB", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-    })
-    .replace(",", "")
-    .toLowerCase();
-  const time = date.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return { day, time };
-}
 
 function TopBar() {
-  /* Seeded from the render clock so there is no blank frame. On the server
-     that is build time in UTC, which is why the <time> below suppresses the
-     hydration warning — the first interval tick corrects it a second later. */
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const timerId = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timerId);
-  }, []);
-
-  const clock = formatClock(now);
+  const { now, day, time } = useClock();
 
   return (
     <header className="os-topbar os-titlebar">
@@ -275,7 +250,7 @@ function TopBar() {
         className="tabular-nums text-text-muted"
         suppressHydrationWarning
       >
-        {`${clock.day}   ${clock.time}`}
+        {`${day}   ${time}`}
       </time>
     </header>
   );
@@ -328,7 +303,7 @@ function ReadmeContent() {
 const SHELL_INITIAL_LINES = [
   `${PROMPT} whoami`,
   "samuel molero — software engineer, new grad",
-  "San Antonio, TX · backend & FullStack · open to offers",
+  "College Station, TX · backend & full-stack · open to offers",
 ];
 
 function ShellContent() {
