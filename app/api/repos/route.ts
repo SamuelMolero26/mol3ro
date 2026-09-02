@@ -1,5 +1,6 @@
 import { env } from "@/lib/env";
 import { GITHUB_USER } from "@/lib/site";
+import type { RepoSummary } from "@/lib/github";
 
 export const revalidate = 3600;
 
@@ -12,14 +13,6 @@ const rank = (name: string) => {
   const index = PINNED.indexOf(name);
   return index === -1 ? PINNED.length : index;
 };
-
-export interface RepoSummary {
-  name: string;
-  description: string | null;
-  url: string;
-  language: string | null;
-  stars: number;
-}
 
 interface GitHubRepo {
   name?: string;
@@ -52,10 +45,10 @@ export async function GET() {
       `https://api.github.com/users/${GITHUB_USER}/repos?sort=pushed&per_page=60`,
       { headers, next: { revalidate: 3600 } },
     );
-    if (!res.ok) return Response.json({ repos: [] }, { status: 502 });
+    if (!res.ok) return Response.json({ repos: [], ok: false });
 
     const raw = await res.json();
-    if (!Array.isArray(raw)) return Response.json({ repos: [] }, { status: 502 });
+    if (!Array.isArray(raw)) return Response.json({ repos: [], ok: false });
 
     const repos = (raw as GitHubRepo[])
       .filter((repo) => !repo.fork && !repo.archived)
@@ -64,8 +57,8 @@ export async function GET() {
       .sort((a, b) => rank(a.name) - rank(b.name))
       .slice(0, MAX_REPOS);
 
-    return Response.json({ repos });
+    return Response.json({ repos, ok: true });
   } catch {
-    return Response.json({ repos: [] }, { status: 500 });
+    return Response.json({ repos: [], ok: false });
   }
 }

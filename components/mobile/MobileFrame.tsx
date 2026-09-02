@@ -22,17 +22,10 @@ import {
 } from "@/lib/site";
 import { COMMAND_NAMES, PROMPT, getShellLinkHref, useShell } from "@/lib/shell";
 import { useClock } from "@/lib/clock";
+import type { ReposResponse, RepoSummary } from "@/lib/github";
 
 type CopyStatus = "copied" | "failed" | null;
 type TabId = "card" | "repos" | "shell" | "resume";
-interface RepoSummary {
-  name: string;
-  description: string | null;
-  url: string;
-  language: string | null;
-  stars: number;
-}
-
 interface TabDefinition {
   id: TabId;
   label: string;
@@ -142,6 +135,7 @@ function ContactCard({
 type ReposState =
   | { status: "loading" }
   | { status: "ready"; repos: RepoSummary[] }
+  | { status: "empty" }
   | { status: "failed" };
 
 function ReposTab() {
@@ -154,11 +148,13 @@ function ReposTab() {
     fetch("/api/repos")
       .then(async (res) => {
         if (!res.ok) throw new Error("Failed to fetch repos");
-        return (await res.json()) as { repos?: RepoSummary[] };
+        return (await res.json()) as Partial<ReposResponse>;
       })
       .then((data) => {
         if (cancelled) return;
-        setState({ status: "ready", repos: data.repos ?? [] });
+        if (data.ok === false) return setState({ status: "failed" });
+        const repos = data.repos ?? [];
+        setState(repos.length ? { status: "ready", repos } : { status: "empty" });
       })
       .catch(() => {
         if (!cancelled) setState({ status: "failed" });
@@ -172,7 +168,11 @@ function ReposTab() {
     return (
       <div className="mobile-repos mobile-repos--message">
         <p className="mobile-repos__note">
-          {state.status === "failed" ? "could not reach github" : "fetching repos…"}
+          {state.status === "failed"
+            ? "could not reach github"
+            : state.status === "empty"
+              ? "no public repos yet"
+              : "fetching repos…"}
         </p>
         <a
           href={GITHUB_URL}
