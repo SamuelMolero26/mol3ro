@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { EB_Garamond, Geist_Mono, JetBrains_Mono } from "next/font/google";
 import { DOMAIN } from "@/lib/site";
+import { GlobalEmailToast } from "@/components/ui/GlobalEmailToast";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body className="min-h-full">
         {children}
+        <GlobalEmailToast />
         <Analytics />
       </body>
     </html>
