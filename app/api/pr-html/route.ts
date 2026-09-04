@@ -102,6 +102,14 @@ export async function GET(request: Request): Promise<Response> {
     // same-origin requests that resolve against this site.
     html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
     html = html.replace(/<script\b[^>]*\/?>/gi, "");
+    // Defense-in-depth: iframe is sandboxed without allow-scripts, but
+    // sanitize event handlers / javascript: URLs anyway.
+    html = html.replace(/\s+on\w+\s*=\s*"[^"]*"/gi, "");
+    html = html.replace(/\s+on\w+\s*=\s*'[^']*'/gi, "");
+    html = html.replace(/\s+on\w+\s*=\s*[^\s"'`=<>]+/gi, "");
+    html = html.replace(/\s+(href|src|action|xlink:href)\s*=\s*"[^"]*javascript:[^"]*"/gi, ' $1="#"');
+    html = html.replace(/\s+(href|src|action|xlink:href)\s*=\s*'[^']*javascript:[^']*'/gi, " $1='#'");
+    html = html.replace(/\s+(href|src|action|xlink:href)\s*=\s*javascript:[^\s"'`>]+/gi, ' $1="#"');
 
     // Resolve every remaining relative URL against github.com
     if (/<head(\s[^>]*)?>/i.test(html)) {

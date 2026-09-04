@@ -39,6 +39,15 @@ export async function GET(): Promise<Response> {
     // error boundary replaces the page. Serve the server-rendered markup only.
     html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
     html = html.replace(/<script\b[^>]*\/?>/gi, "");
+    // Defense-in-depth: sandboxed iframes block scripts, but strip event
+    // handlers and javascript: URLs anyway so a sandbox misconfiguration
+    // cannot turn scraped markup into an XSS vector.
+    html = html.replace(/\s+on\w+\s*=\s*"[^"]*"/gi, "");
+    html = html.replace(/\s+on\w+\s*=\s*'[^']*'/gi, "");
+    html = html.replace(/\s+on\w+\s*=\s*[^\s"'`=<>]+/gi, "");
+    html = html.replace(/\s+(href|src|action|xlink:href)\s*=\s*"[^"]*javascript:[^"]*"/gi, ' $1="#"');
+    html = html.replace(/\s+(href|src|action|xlink:href)\s*=\s*'[^']*javascript:[^']*'/gi, " $1='#'");
+    html = html.replace(/\s+(href|src|action|xlink:href)\s*=\s*javascript:[^\s"'`>]+/gi, ' $1="#"');
 
     // Resolve every remaining relative URL against github.com.
     html = html.replace(/<head(\s[^>]*)?>/i, '$&<base href="https://github.com/" target="_blank">');
