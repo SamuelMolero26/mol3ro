@@ -336,6 +336,8 @@ function ResumeTab() {
           className="mobile-resume__page"
           width={772}
           height={1000}
+          loading="lazy"
+          sizes="(max-width: 560px) 94vw, 560px"
         />
       </a>
       <a

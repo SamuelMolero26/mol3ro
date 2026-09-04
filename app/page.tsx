@@ -1,5 +1,4 @@
-import { DesktopEnvironment } from "@/components/desktop/DesktopEnvironment";
-import { MobileFrame } from "@/components/mobile/MobileFrame";
+import { ResponsiveShell } from "@/components/ResponsiveShell";
 
 export default function Home() {
   return (
@@ -7,14 +6,7 @@ export default function Home() {
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
-
-      <div className="md:hidden">
-        <MobileFrame />
-      </div>
-
-      <div className="hidden md:block">
-        <DesktopEnvironment />
-      </div>
+      <ResponsiveShell />
     </main>
   );
 }

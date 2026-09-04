@@ -1,24 +1,25 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
-import { EB_Garamond, Geist_Mono, JetBrains_Mono } from "next/font/google";
+import { EB_Garamond, JetBrains_Mono } from "next/font/google";
 import { DOMAIN } from "@/lib/site";
 import { GlobalEmailToast } from "@/components/ui/GlobalEmailToast";
 import "./globals.css";
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
+  adjustFontFallback: true,
 });
 
 const ebGaramond = EB_Garamond({
   variable: "--font-eb-garamond",
   subsets: ["latin"],
   style: ["normal", "italic"],
+  display: "swap",
+  preload: true,
+  adjustFontFallback: true,
 });
 
 const title = "Samuel Molero — Software Engineer";
@@ -36,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${geistMono.variable} ${jetbrainsMono.variable} ${ebGaramond.variable} h-full antialiased`}
+      className={`${jetbrainsMono.variable} ${ebGaramond.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         {children}

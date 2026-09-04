@@ -22,4 +22,4 @@ export const FOCUS = "Backend & Full-Stack";
 export const RESUME_URL = "/Samuel_Molero_SWE_Resume.pdf";
 /* First page rendered at build time so mobile shows the resume without
    relying on in-iframe PDF rendering, which iOS Safari does not do. */
-export const RESUME_PREVIEW_URL = "/resume-preview.png";
+export const RESUME_PREVIEW_URL = "/resume-preview.webp";
