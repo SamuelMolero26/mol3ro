@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactElement } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import Image from "next/image";
+import resumePreview from "@/public/resume-preview.webp";
 import { AquaButton } from "@/components/ui/AquaButton";
 import { CardIcon, LinkedInIcon, ReposIcon, ResumeIcon, ShellIcon } from "@/components/ui/icons";
 import {
@@ -15,7 +16,6 @@ import {
   LOCATION,
   NAME,
   PHONE,
-  RESUME_PREVIEW_URL,
   RESUME_URL,
   ROLE,
   SCHOOL,
@@ -23,6 +23,8 @@ import {
 import { COMMAND_NAMES, PROMPT, getShellLinkHref, useShell } from "@/lib/shell";
 import { useClock } from "@/lib/clock";
 import type { ReposResponse, RepoSummary } from "@/lib/github";
+import { copyToClipboard } from "@/lib/email";
+import { showEmailToast } from "@/components/ui/GlobalEmailToast";
 
 type CopyStatus = "copied" | "failed" | null;
 type TabId = "card" | "repos" | "shell" | "resume";
@@ -82,10 +84,12 @@ function MobileWindow({ title, children }: { title: string; children: React.Reac
 function ContactCard({
   copyStatus,
   onCopy,
+  onEmailClick,
   onSave,
 }: {
   copyStatus: CopyStatus;
   onCopy: () => void;
+  onEmailClick: () => void;
   onSave: () => void;
 }) {
   const copyLabel =
@@ -107,7 +111,15 @@ function ContactCard({
           <p className="mobile-card__school">{SCHOOL}</p>
         </div>
         <p className="mobile-card__meta">
-          {EMAIL} · {LOCATION}
+          <button
+            type="button"
+            onClick={onEmailClick}
+            className="mobile-card__email"
+            aria-label={`Copy email ${EMAIL}`}
+          >
+            {EMAIL}
+          </button>
+          <span aria-hidden="true"> · {LOCATION}</span>
         </p>
       </article>
       <div className="mobile-card__actions">
@@ -245,9 +257,36 @@ function ShellTab() {
       return <p key={`${index}-${line}`}>{line}</p>;
     }
 
+    const isEmail = href.startsWith("mailto:");
+    const isExternal = href.startsWith("https://");
+
     return (
       <p key={`${index}-${line}`}>
-        <a className="shell__link" href={href} target="_blank" rel="noreferrer noopener">
+        <a
+          className="shell__link"
+          href={href}
+          target={isExternal ? "_blank" : undefined}
+          rel={isExternal ? "noreferrer noopener" : undefined}
+          onClick={
+            isEmail
+              ? (e) => {
+                  e.preventDefault();
+                  void (async () => {
+                    let copied = false;
+                    try {
+                      copied = await copyToClipboard(EMAIL);
+                    } catch {
+                      copied = false;
+                    }
+                    showEmailToast(copied);
+                    try {
+                      window.location.href = href;
+                    } catch {}
+                  })();
+                }
+              : undefined
+          }
+        >
           {line}
         </a>
       </p>
@@ -292,11 +331,11 @@ function ResumeTab() {
         className="mobile-resume__preview"
       >
         <Image
-          src={RESUME_PREVIEW_URL}
+          src={resumePreview}
           alt={`${NAME} resume, page 1`}
           className="mobile-resume__page"
-          width={772}
-          height={1000}
+          loading="lazy"
+          sizes="(max-width: 560px) 94vw, 560px"
         />
       </a>
       <a
@@ -315,16 +354,20 @@ export function MobileFrame() {
   const [copyStatus, setCopyStatus] = useState<CopyStatus>(null);
   const activeTab = TABS.find((tab) => tab.id === active) ?? TABS[0];
 
-  const copyEmail = useCallback(async () => {
+  async function copyEmail() {
+    let ok = false;
     try {
-      await navigator.clipboard.writeText(EMAIL);
-      setCopyStatus("copied");
+      ok = await copyToClipboard(EMAIL);
     } catch {
-      setCopyStatus("failed");
+      ok = false;
     }
-  }, []);
+    setCopyStatus(ok ? "copied" : "failed");
+    showEmailToast(ok);
+    // reset label after a beat so the button is reusable
+    window.setTimeout(() => setCopyStatus(null), 2500);
+  }
 
-  const saveContact = useCallback(() => {
+  function saveContact() {
     const vcard = [
       "BEGIN:VCARD",
       "VERSION:3.0",
@@ -339,11 +382,71 @@ export function MobileFrame() {
       `NOTE:${FOCUS} · ${SCHOOL} · graduating ${GRADUATION}`,
       "END:VCARD",
     ].join("\r\n");
-    const anchor = document.createElement("a");
-    anchor.href = `data:text/vcard;charset=utf-8,${encodeURIComponent(vcard)}`;
-    anchor.download = "samuel-molero.vcf";
-    anchor.click();
-  }, []);
+
+    const triggerBlobDownload = () => {
+      const blob = new Blob([vcard], { type: "text/vcard;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const isIOS =
+        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+      // iOS Safari ignores the download attribute — opening the blob lets the
+      // system preview the vCard and offer "Create New Contact" / "Add to Existing".
+      // Must stay synchronous with the user gesture, so no setTimeout before window.open.
+      if (isIOS) {
+        try {
+          window.open(url, "_blank");
+        } catch {
+          window.location.href = url;
+        }
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        return;
+      }
+
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "samuel-molero.vcf";
+      anchor.rel = "noopener";
+      anchor.style.display = "none";
+      document.body.appendChild(anchor);
+      anchor.click();
+      // Keep URL alive briefly so the download can start, then clean up.
+      setTimeout(() => {
+        try {
+          document.body.removeChild(anchor);
+        } catch {}
+        URL.revokeObjectURL(url);
+      }, 1500);
+    };
+
+    // Best UX on mobile: system share sheet with a real .vcf file — iOS/Android
+    // show "Add to Contacts" / "Save to Files" directly. Requires a user gesture.
+    try {
+      const blob = new Blob([vcard], { type: "text/vcard;charset=utf-8" });
+      const file = new File([blob], "samuel-molero.vcf", { type: "text/vcard" });
+      const nav = navigator as Navigator & {
+        canShare?: (data: ShareData & { files?: File[] }) => boolean;
+        share?: (data: ShareData & { files?: File[] }) => Promise<void>;
+      };
+      if (nav.canShare?.({ files: [file] }) && nav.share) {
+        void nav
+          .share({ files: [file], title: NAME, text: `${ROLE} — ${SCHOOL}` })
+          .catch((err: unknown) => {
+            // User dismissal (AbortError) should not trigger a download
+            const name =
+              err && typeof err === "object" && "name" in err
+                ? (err as { name?: string }).name
+                : null;
+            if (name !== "AbortError") triggerBlobDownload();
+          });
+        return;
+      }
+    } catch {
+      // fall through to blob download
+    }
+
+    triggerBlobDownload();
+  }
 
   return (
     <div className="app-texture phone-stage">
@@ -385,6 +488,7 @@ export function MobileFrame() {
                   <ContactCard
                     copyStatus={copyStatus}
                     onCopy={copyEmail}
+                    onEmailClick={copyEmail}
                     onSave={saveContact}
                   />
                 )}

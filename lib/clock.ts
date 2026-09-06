@@ -32,8 +32,38 @@ export function useClock() {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    const timerId = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timerId);
+    let timerId: ReturnType<typeof setInterval> | null = null;
+
+    function start() {
+      if (timerId !== null) return;
+      timerId = setInterval(() => setNow(new Date()), 1000);
+    }
+
+    function stop() {
+      if (timerId !== null) {
+        clearInterval(timerId);
+        timerId = null;
+      }
+    }
+
+    // Stop ticking while the tab is hidden: nothing reads the clock then,
+    // and the interval keeps the page from going fully idle.
+    function handleVisibility() {
+      if (document.hidden) {
+        stop();
+      } else {
+        setNow(new Date());
+        start();
+      }
+    }
+
+    start();
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   return { now, ...formatClock(now) };

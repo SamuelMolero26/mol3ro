@@ -15,20 +15,9 @@ import { Window, type ResizeDirection } from "@/components/ui/Window";
 import { EMAIL, GITHUB_USER, RESUME_URL, NAME, ROLE, LOCATION, FOCUS, SCHOOL, GRADUATION } from "@/lib/site";
 import { COMMAND_NAMES, PROMPT, getShellLinkHref, useShell } from "@/lib/shell";
 import { useClock } from "@/lib/clock";
-
-/* Single source: --breakpoint-desktop in styles/theme.css (fallback 900px). */
-function getDesktopBreakpoint(): number {
-  if (typeof window === "undefined") return 900;
-  const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue("--breakpoint-desktop")
-    .trim();
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isNaN(parsed) ? 900 : parsed;
-}
-
-function desktopMatches(): boolean {
-  return window.matchMedia(`(min-width: ${getDesktopBreakpoint()}px)`).matches;
-}
+import { copyToClipboard, getMailtoHref } from "@/lib/email";
+import { desktopMatches } from "@/lib/responsive";
+import { showEmailToast } from "@/components/ui/GlobalEmailToast";
 
 const MIN_VISIBLE_WIDTH = 96;
 const MIN_WINDOW_WIDTH = 280;
@@ -259,6 +248,22 @@ function TopBar() {
 /* ── Window content ── */
 
 function ReadmeContent() {
+  async function handleHireClick() {
+    const href = getMailtoHref(EMAIL);
+    let copied = false;
+    try {
+      copied = await copyToClipboard(EMAIL);
+    } catch {
+      copied = false;
+    }
+    showEmailToast(copied);
+    // Try native mail app — if no handler is installed this silently no-ops,
+    // but the toast already gave the recruiter Gmail / Outlook fallbacks.
+    try {
+      window.location.href = href;
+    } catch {}
+  }
+
   return (
     <div className="readme">
       <h1 className="readme__name">
@@ -275,7 +280,7 @@ function ReadmeContent() {
           1 year of industry experience (SWE &amp; ML/Data)
         </span>
         <span className="block">
-         Building, learning, and looking for the next challenge
+          Building, learning, and looking for the next challenge
         </span>
       </p>
       <dl className="readme__facts">
@@ -295,12 +300,8 @@ function ReadmeContent() {
           </dd>
         </div>
       </dl>
-    
-      <AquaButton
-        href={`mailto:${EMAIL}?subject=Let%27s%20work%20together`}
-        fullWidth
-        className="readme__cta"
-      >
+
+      <AquaButton fullWidth className="readme__cta" onClick={handleHireClick}>
         Continue to hire Samuel
       </AquaButton>
     </div>
@@ -330,14 +331,35 @@ function ShellContent() {
             );
           }
           const href = getShellLinkHref(line);
+          const isEmail = href?.startsWith("mailto:");
+          const isExternal = href?.startsWith("https://");
           return (
             <p key={`${index}-${line}`} className="shell__wrap">
               {href ? (
                 <a
                   className="shell__link"
                   href={href}
-                  target="_blank"
-                  rel="noreferrer noopener"
+                  target={isExternal ? "_blank" : undefined}
+                  rel={isExternal ? "noreferrer noopener" : undefined}
+                  onClick={
+                    isEmail
+                      ? (e) => {
+                          e.preventDefault();
+                          void (async () => {
+                            let copied = false;
+                            try {
+                              copied = await copyToClipboard(EMAIL);
+                            } catch {
+                              copied = false;
+                            }
+                            showEmailToast(copied);
+                            try {
+                              window.location.href = href;
+                            } catch {}
+                          })();
+                        }
+                      : undefined
+                  }
                 >
                   {line}
                 </a>

@@ -1,8 +1,51 @@
-export const revalidate = 3600;
+import {
+  NO_STORE_CACHE_CONTROL,
+  SUCCESS_CACHE_CONTROL,
+  createUpstreamDeadline,
+  fetchUpstreamText,
+} from "@/lib/upstream";
 
-const PR_RE = /^https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/\d+\/?$/;
-const MAX_BYTES = 1572864; // 1.5 MB
-const TIMEOUT_MS = 8000;
+export const dynamic = "force-dynamic";
+
+const GITHUB_ORIGIN = "https://github.com";
+const PR_PATH_RE = /^\/[^/]+\/[^/]+\/pull\/\d+\/?$/;
+const ROUTE_DEADLINE_MS = 8000;
+const MAX_HTML_BYTES = 1572864;
+const MAX_FRAGMENT_BYTES = 131072;
+const MAX_FRAGMENT_TOTAL_BYTES = 262144;
+const MAX_FRAGMENT_FETCHES = 2;
+const MAX_OUTPUT_BYTES = MAX_HTML_BYTES + MAX_FRAGMENT_TOTAL_BYTES;
+
+const HTML_HEADERS = { "User-Agent": "Mozilla/5.0" };
+const FRAGMENT_RE =
+  /<include-fragment\b[^>]*\bsrc="([^"]+)"[^>]*>[\s\S]*?<\/include-fragment>/gi;
+
+function parsePullRequestUrl(value: string): URL | null {
+  try {
+    const url = new URL(value);
+    return url.origin === GITHUB_ORIGIN &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash &&
+      PR_PATH_RE.test(url.pathname)
+      ? url
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function isAllowedPresentationFragment(url: URL, pullRequestUrl: URL): boolean {
+  const expectedPath = `${pullRequestUrl.pathname.replace(/\/$/, "")}/partials/links`;
+  const hasIssues = url.searchParams.get("has_github_issues");
+  return (
+    url.origin === GITHUB_ORIGIN &&
+    url.pathname === expectedPath &&
+    (hasIssues === null || hasIssues === "true" || hasIssues === "false") &&
+    [...url.searchParams.keys()].every((key) => key === "has_github_issues")
+  );
+}
 
 function buildFallbackHtml(originalUrl: string): string {
   const escaped = originalUrl
@@ -16,92 +59,92 @@ function buildFallbackHtml(originalUrl: string): string {
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
   const rawUrl = searchParams.get("url");
+  const pullRequestUrl = rawUrl ? parsePullRequestUrl(rawUrl) : null;
 
-  if (!rawUrl || !PR_RE.test(rawUrl)) {
+  if (!rawUrl || !pullRequestUrl) {
     return new Response("Invalid or missing url", {
       status: 400,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      headers: {
+        "Cache-Control": NO_STORE_CACHE_CONTROL,
+        "Content-Type": "text/plain; charset=utf-8",
+      },
     });
   }
 
+  const deadline = createUpstreamDeadline(ROUTE_DEADLINE_MS);
+
   try {
-    const res = await fetch(rawUrl, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      next: { revalidate: 3600 },
+    const upstream = await fetchUpstreamText(pullRequestUrl, {
+      headers: HTML_HEADERS,
+      maxBytes: MAX_HTML_BYTES,
+      signal: deadline.signal,
     });
+    let html = upstream.text;
+    let fragmentBytes = 0;
+    let fragmentFetches = 0;
+    let cacheControl = SUCCESS_CACHE_CONTROL;
 
-    if (!res.ok) throw new Error(`upstream ${res.status}`);
-
-    const contentLength = res.headers.get("content-length");
-    if (contentLength && Number(contentLength) > MAX_BYTES) {
-      throw new Error("too large");
-    }
-
-    let html = await res.text();
-
-    if (new TextEncoder().encode(html).length > MAX_BYTES) {
-      throw new Error("too large");
-    }
-
-    // Loop-resolve every <include-fragment> server-side
-    const FRAGMENT_RE =
-      /<include-fragment\b[^>]*\bsrc="([^"]+)"[^>]*>[\s\S]*?<\/include-fragment>/i;
-    let processed = html;
-    let iterations = 0;
-    while (iterations < 10) {
-      const match = processed.match(FRAGMENT_RE);
-      if (!match) break;
+    // Resolve only presentation-safe fragments. GitHub's edit forms are
+    // deliberately removed without issuing upstream requests.
+    for (const match of upstream.text.matchAll(FRAGMENT_RE)) {
       const full = match[0];
-      const srcAttr = match[1].replaceAll("&amp;", "&");
-      let srcUrl: URL;
+      let replacement = "";
       try {
-        srcUrl = new URL(srcAttr, "https://github.com/");
-      } catch {
-        processed = processed.replace(full, "");
-        iterations++;
-        continue;
-      }
-      if (srcUrl.origin !== "https://github.com") {
-        processed = processed.replace(full, "");
-        iterations++;
-        continue;
-      }
-      try {
-        const fragRes = await fetch(srcUrl, {
+        const srcUrl = new URL(
+          match[1].replaceAll("&amp;", "&"),
+          `${GITHUB_ORIGIN}/`,
+        );
+        if (!isAllowedPresentationFragment(srcUrl, pullRequestUrl)) {
+          html = html.replace(full, () => replacement);
+          continue;
+        }
+
+        const remainingBytes = MAX_FRAGMENT_TOTAL_BYTES - fragmentBytes;
+        if (fragmentFetches >= MAX_FRAGMENT_FETCHES || remainingBytes <= 0) {
+          cacheControl = NO_STORE_CACHE_CONTROL;
+          html = html.replace(full, () => replacement);
+          continue;
+        }
+
+        fragmentFetches += 1;
+        const fragment = await fetchUpstreamText(srcUrl, {
           headers: {
-            "User-Agent": "Mozilla/5.0",
+            ...HTML_HEADERS,
             "X-Requested-With": "XMLHttpRequest",
           },
-          signal: AbortSignal.timeout(TIMEOUT_MS),
-          next: { revalidate: 3600 },
+          maxBytes: Math.min(MAX_FRAGMENT_BYTES, remainingBytes),
+          signal: deadline.signal,
         });
-        if (fragRes.ok) {
-          const fragHtml = await fragRes.text();
-          // cap fragment as well
-          if (new TextEncoder().encode(fragHtml).length <= MAX_BYTES) {
-            processed = processed.replace(full, fragHtml);
-          } else {
-            processed = processed.replace(full, "");
-          }
-        } else {
-          processed = processed.replace(full, "");
-        }
+        fragmentBytes += fragment.byteLength;
+        replacement = fragment.text;
       } catch {
-        processed = processed.replace(full, "");
+        cacheControl = NO_STORE_CACHE_CONTROL;
       }
-      iterations++;
+      // Function form: a string replacement would expand $&, $` and $'
+      // found in upstream markup (a PR title is enough to trigger it).
+      html = html.replace(full, () => replacement);
     }
-    html = processed;
 
-    if (new TextEncoder().encode(html).length > MAX_BYTES) {
-      throw new Error("too large");
+    if (new TextEncoder().encode(html).byteLength > MAX_OUTPUT_BYTES) {
+      throw new Error("Rendered pull request exceeded the body limit");
     }
 
     // Strip all scripts — GitHub bundle would boot React and fire
     // same-origin requests that resolve against this site.
     html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
     html = html.replace(/<script\b[^>]*\/?>/gi, "");
+    // Defense-in-depth: iframe is sandboxed without allow-scripts, but
+    // sanitize event handlers / javascript: URLs anyway.
+    html = html.replace(
+      /<link\b[^>]*\brel=["']modulepreload["'][^>]*>/gi,
+      "",
+    );
+    html = html.replace(/\s+on\w+\s*=\s*"[^"]*"/gi, "");
+    html = html.replace(/\s+on\w+\s*=\s*'[^']*'/gi, "");
+    html = html.replace(/\s+on\w+\s*=\s*[^\s"'`=<>]+/gi, "");
+    html = html.replace(/\s+(href|src|action|xlink:href)\s*=\s*"[^"]*javascript:[^"]*"/gi, ' $1="#"');
+    html = html.replace(/\s+(href|src|action|xlink:href)\s*=\s*'[^']*javascript:[^']*'/gi, " $1='#'");
+    html = html.replace(/\s+(href|src|action|xlink:href)\s*=\s*javascript:[^\s"'`>]+/gi, ' $1="#"');
 
     // Resolve every remaining relative URL against github.com
     if (/<head(\s[^>]*)?>/i.test(html)) {
@@ -116,7 +159,7 @@ export async function GET(request: Request): Promise<Response> {
     return new Response(html, {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+        "Cache-Control": cacheControl,
       },
     });
   } catch {
@@ -124,8 +167,10 @@ export async function GET(request: Request): Promise<Response> {
     return new Response(fallback, {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+        "Cache-Control": NO_STORE_CACHE_CONTROL,
       },
     });
+  } finally {
+    deadline.dispose();
   }
 }
