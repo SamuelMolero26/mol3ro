@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { RESUME_TEXT_LINES } from "@/lib/resume";
+import { desktopMatches } from "@/lib/responsive";
 import {
   DOMAIN,
   EMAIL,
@@ -20,20 +21,6 @@ export const PROMPT = "➜";
 export const PR_RE = /^https:\/\/github\.com\/[^\/]+\/[^\/]+\/pull\/\d+\/?$/;
 
 type OpenPrDetail = { url: string };
-
-function getDesktopBreakpoint(): number {
-  if (typeof window === "undefined") return 900;
-  const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue("--breakpoint-desktop")
-    .trim();
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isNaN(parsed) ? 900 : parsed;
-}
-
-export function desktopMatches(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia(`(min-width: ${getDesktopBreakpoint()}px)`).matches;
-}
 
 /**
  * Every command returns the lines it prints. Async commands resolve to the

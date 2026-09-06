@@ -46,9 +46,8 @@ export function useClock() {
       }
     }
 
-    // Throttle when tab is not visible — both MobileFrame and
-    // DesktopEnvironment mount simultaneously, so two intervals would
-    // otherwise tick while hidden.
+    // Stop ticking while the tab is hidden: nothing reads the clock then,
+    // and the interval keeps the page from going fully idle.
     function handleVisibility() {
       if (document.hidden) {
         stop();

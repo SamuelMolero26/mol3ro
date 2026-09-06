@@ -16,21 +16,8 @@ import { EMAIL, GITHUB_USER, RESUME_URL, NAME, ROLE, LOCATION, FOCUS, SCHOOL, GR
 import { COMMAND_NAMES, PROMPT, getShellLinkHref, useShell } from "@/lib/shell";
 import { useClock } from "@/lib/clock";
 import { copyToClipboard, getMailtoHref } from "@/lib/email";
+import { desktopMatches } from "@/lib/responsive";
 import { showEmailToast } from "@/components/ui/GlobalEmailToast";
-
-/* Single source: --breakpoint-desktop in styles/theme.css (fallback 900px). */
-function getDesktopBreakpoint(): number {
-  if (typeof window === "undefined") return 900;
-  const raw = getComputedStyle(document.documentElement)
-    .getPropertyValue("--breakpoint-desktop")
-    .trim();
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isNaN(parsed) ? 900 : parsed;
-}
-
-function desktopMatches(): boolean {
-  return window.matchMedia(`(min-width: ${getDesktopBreakpoint()}px)`).matches;
-}
 
 const MIN_VISIBLE_WIDTH = 96;
 const MIN_WINDOW_WIDTH = 280;

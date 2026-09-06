@@ -17,6 +17,19 @@ const CSP = [
   "frame-ancestors 'self'",
 ].join("; ");
 
+const GITHUB_PROXY_CSP = [
+  "default-src 'none'",
+  "script-src 'none'",
+  "style-src 'unsafe-inline' https://github.githubassets.com",
+  "font-src https://github.githubassets.com data:",
+  "img-src data: blob: https://github.com https://*.githubusercontent.com https://*.githubassets.com",
+  "connect-src 'none'",
+  "object-src 'none'",
+  "base-uri https://github.com",
+  "form-action 'none'",
+  "frame-ancestors 'self'",
+].join("; ");
+
 const SECURITY_HEADERS = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
@@ -29,9 +42,7 @@ const SECURITY_HEADERS = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  compress: true,
   poweredByHeader: false,
-  reactStrictMode: true,
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
   },
@@ -51,11 +62,19 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // Security + CSP for every route (including /api/* — the GitHub/PR
-        // html is served in a sandboxed iframe, so SAMEORIGIN is the right
-        // frame policy even for API).
+        // Shared security headers also apply to same-origin iframe routes.
         source: "/(.*)",
         headers: SECURITY_HEADERS,
+      },
+      // Last matching value wins, so these exact routes retain the global
+      // security headers while allowing only the assets their HTML requires.
+      {
+        source: "/api/github-html",
+        headers: [{ key: "Content-Security-Policy", value: GITHUB_PROXY_CSP }],
+      },
+      {
+        source: "/api/pr-html",
+        headers: [{ key: "Content-Security-Policy", value: GITHUB_PROXY_CSP }],
       },
     ];
   },

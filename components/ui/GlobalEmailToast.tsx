@@ -6,7 +6,6 @@ import { getGmailHref, getOutlookHref } from "@/lib/email";
 
 type ToastDetail = {
   copied: boolean;
-  email?: string;
 };
 
 export function GlobalEmailToast() {

@@ -1,22 +1,52 @@
 import { GITHUB_URL } from "@/lib/site";
+import {
+  NO_STORE_CACHE_CONTROL,
+  SUCCESS_CACHE_CONTROL,
+  createUpstreamDeadline,
+  fetchUpstreamText,
+} from "@/lib/upstream";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
+
+const GITHUB_ORIGIN = "https://github.com";
+const ROUTE_DEADLINE_MS = 8000;
+const MAX_PROFILE_BYTES = 1048576;
+const MAX_CONTRIBUTION_BYTES = 262144;
+
+const HTML_HEADERS = { "User-Agent": "Mozilla/5.0" };
+const GITHUB_PROFILE_URL = new URL(GITHUB_URL);
+const CONTRIBUTION_QUERY_KEYS = new Set([
+  "action",
+  "controller",
+  "tab",
+  "user_id",
+]);
+
+function isContributionFragment(url: URL): boolean {
+  return (
+    url.origin === GITHUB_ORIGIN &&
+    url.pathname === GITHUB_PROFILE_URL.pathname &&
+    url.searchParams.get("action") === "show" &&
+    url.searchParams.get("controller") === "profiles" &&
+    url.searchParams.get("tab") === "contributions" &&
+    url.searchParams.get("user_id") === GITHUB_PROFILE_URL.pathname.slice(1) &&
+    [...url.searchParams.keys()].every((key) =>
+      CONTRIBUTION_QUERY_KEYS.has(key),
+    )
+  );
+}
 
 export async function GET(): Promise<Response> {
+  const deadline = createUpstreamDeadline(ROUTE_DEADLINE_MS);
+
   try {
-    const res = await fetch(GITHUB_URL, {
-      headers: { "User-Agent": "Mozilla/5.0" },
-      next: { revalidate: 3600 },
+    const profile = await fetchUpstreamText(GITHUB_URL, {
+      headers: HTML_HEADERS,
+      maxBytes: MAX_PROFILE_BYTES,
+      signal: deadline.signal,
     });
-
-    if (!res.ok) {
-      return new Response(
-        `Failed to fetch GitHub profile: ${res.status} ${res.statusText}`,
-        { status: 500 },
-      );
-    }
-
-    let html = await res.text();
+    let html = profile.text;
+    let cacheControl = SUCCESS_CACHE_CONTROL;
 
     // The contribution calendar ships as <include-fragment>, which GitHub's JS
     // resolves at runtime. Scripts are stripped below, so fetch it server-side.
@@ -24,14 +54,30 @@ export async function GET(): Promise<Response> {
       /<include-fragment\b[^>]*\bsrc="([^"]+)"[^>]*>[\s\S]*?<\/include-fragment>/i,
     );
     if (fragment) {
-      const src = new URL(fragment[1].replaceAll("&amp;", "&"), "https://github.com/");
-      const fragmentRes = await fetch(src, {
-        headers: { "User-Agent": "Mozilla/5.0", "X-Requested-With": "XMLHttpRequest" },
-        next: { revalidate: 3600 },
-      });
-      if (fragmentRes.ok) {
-        html = html.replace(fragment[0], await fragmentRes.text());
+      let replacement = "";
+      try {
+        const src = new URL(
+          fragment[1].replaceAll("&amp;", "&"),
+          `${GITHUB_ORIGIN}/`,
+        );
+        if (!isContributionFragment(src)) {
+          throw new Error("Unexpected contribution fragment URL");
+        }
+        const contribution = await fetchUpstreamText(src, {
+          headers: {
+            ...HTML_HEADERS,
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          maxBytes: MAX_CONTRIBUTION_BYTES,
+          signal: deadline.signal,
+        });
+        replacement = contribution.text;
+      } catch {
+        cacheControl = NO_STORE_CACHE_CONTROL;
       }
+      // Function form: a string replacement would expand $&, $` and $'
+      // found in upstream markup (a PR title is enough to trigger it).
+      html = html.replace(fragment[0], () => replacement);
     }
 
     // GitHub's client bundle assumes it runs on github.com: it boots React and
@@ -42,6 +88,10 @@ export async function GET(): Promise<Response> {
     // Defense-in-depth: sandboxed iframes block scripts, but strip event
     // handlers and javascript: URLs anyway so a sandbox misconfiguration
     // cannot turn scraped markup into an XSS vector.
+    html = html.replace(
+      /<link\b[^>]*\brel=["']modulepreload["'][^>]*>/gi,
+      "",
+    );
     html = html.replace(/\s+on\w+\s*=\s*"[^"]*"/gi, "");
     html = html.replace(/\s+on\w+\s*=\s*'[^']*'/gi, "");
     html = html.replace(/\s+on\w+\s*=\s*[^\s"'`=<>]+/gi, "");
@@ -55,14 +105,18 @@ export async function GET(): Promise<Response> {
     return new Response(html, {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
+        "Cache-Control": cacheControl,
       },
     });
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error fetching GitHub profile";
-    return new Response(`Failed to fetch GitHub profile: ${message}`, {
-      status: 500,
+  } catch {
+    return new Response("Failed to fetch GitHub profile", {
+      status: 502,
+      headers: {
+        "Cache-Control": NO_STORE_CACHE_CONTROL,
+        "Content-Type": "text/plain; charset=utf-8",
+      },
     });
+  } finally {
+    deadline.dispose();
   }
 }

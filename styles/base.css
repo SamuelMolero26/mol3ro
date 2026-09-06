@@ -5,6 +5,24 @@ body {
   overflow-x: hidden;
 }
 
+/* Pre-hydration only. Both shells render server-side so the page ships real
+   content, and this query picks the visible one until ResponsiveShell resolves
+   the match. Keep 900px aligned with --breakpoint-desktop in styles/theme.css
+   and DESKTOP_MEDIA_QUERY in lib/responsive.ts. */
+.shell-ssr-desktop {
+  display: none;
+}
+
+@media (width >= 900px) {
+  .shell-ssr-mobile {
+    display: none;
+  }
+
+  .shell-ssr-desktop {
+    display: block;
+  }
+}
+
 body {
   background: var(--color-bg);
   color: var(--color-text);

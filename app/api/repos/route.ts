@@ -1,12 +1,20 @@
 import { env } from "@/lib/env";
 import { GITHUB_USER } from "@/lib/site";
 import type { RepoSummary } from "@/lib/github";
+import {
+  NO_STORE_CACHE_CONTROL,
+  SUCCESS_CACHE_CONTROL,
+  createUpstreamDeadline,
+  fetchUpstreamJson,
+} from "@/lib/upstream";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 const PINNED = ["droids-mem", "mcp-go", "mol3ro"];
 
 const MAX_REPOS = 8;
+const MAX_JSON_BYTES = 1048576;
+const ROUTE_DEADLINE_MS = 5000;
 
 /* PINNED is a short hand-kept list, so indexOf is fine here. */
 const rank = (name: string) => {
@@ -35,20 +43,19 @@ function toSummary(repo: GitHubRepo): RepoSummary | null {
   };
 }
 
-export async function GET() {
+export async function GET(): Promise<Response> {
+  const deadline = createUpstreamDeadline(ROUTE_DEADLINE_MS);
+
   try {
     const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
     const token = env.githubToken;
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    const res = await fetch(
+    const raw = await fetchUpstreamJson(
       `https://api.github.com/users/${GITHUB_USER}/repos?sort=pushed&per_page=60`,
-      { headers, next: { revalidate: 3600 } },
+      { headers, maxBytes: MAX_JSON_BYTES, signal: deadline.signal },
     );
-    if (!res.ok) return Response.json({ repos: [], ok: false });
-
-    const raw = await res.json();
-    if (!Array.isArray(raw)) return Response.json({ repos: [], ok: false });
+    if (!Array.isArray(raw)) throw new Error("Unexpected GitHub response");
 
     const repos = (raw as GitHubRepo[])
       .filter((repo) => !repo.fork && !repo.archived)
@@ -57,8 +64,19 @@ export async function GET() {
       .sort((a, b) => rank(a.name) - rank(b.name))
       .slice(0, MAX_REPOS);
 
-    return Response.json({ repos, ok: true });
+    return Response.json(
+      { repos, ok: true },
+      { headers: { "Cache-Control": SUCCESS_CACHE_CONTROL } },
+    );
   } catch {
-    return Response.json({ repos: [], ok: false });
+    return Response.json(
+      { repos: [], ok: false },
+      {
+        status: 502,
+        headers: { "Cache-Control": NO_STORE_CACHE_CONTROL },
+      },
+    );
+  } finally {
+    deadline.dispose();
   }
 }

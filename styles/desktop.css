@@ -213,20 +213,6 @@ button.os-window__control:focus-visible {
   }
 }
 
-@media (width >= 768px) and (width < 900px) {
-  .desktop-workspace {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) minmax(0, 0.9fr);
-    gap: 10px;
-    padding: 10px;
-  }
-
-  .desktop-dock {
-    display: none;
-  }
-}
-
 /* ── Dock ── */
 
 .desktop-dock {

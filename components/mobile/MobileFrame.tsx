@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactElement } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import Image from "next/image";
+import resumePreview from "@/public/resume-preview.webp";
 import { AquaButton } from "@/components/ui/AquaButton";
 import { CardIcon, LinkedInIcon, ReposIcon, ResumeIcon, ShellIcon } from "@/components/ui/icons";
 import {
@@ -15,7 +16,6 @@ import {
   LOCATION,
   NAME,
   PHONE,
-  RESUME_PREVIEW_URL,
   RESUME_URL,
   ROLE,
   SCHOOL,
@@ -331,11 +331,9 @@ function ResumeTab() {
         className="mobile-resume__preview"
       >
         <Image
-          src={RESUME_PREVIEW_URL}
+          src={resumePreview}
           alt={`${NAME} resume, page 1`}
           className="mobile-resume__page"
-          width={772}
-          height={1000}
           loading="lazy"
           sizes="(max-width: 560px) 94vw, 560px"
         />
@@ -356,7 +354,7 @@ export function MobileFrame() {
   const [copyStatus, setCopyStatus] = useState<CopyStatus>(null);
   const activeTab = TABS.find((tab) => tab.id === active) ?? TABS[0];
 
-  const copyEmail = useCallback(async () => {
+  async function copyEmail() {
     let ok = false;
     try {
       ok = await copyToClipboard(EMAIL);
@@ -367,21 +365,9 @@ export function MobileFrame() {
     showEmailToast(ok);
     // reset label after a beat so the button is reusable
     window.setTimeout(() => setCopyStatus(null), 2500);
-  }, []);
+  }
 
-  const handleEmailClick = useCallback(async () => {
-    let ok = false;
-    try {
-      ok = await copyToClipboard(EMAIL);
-    } catch {
-      ok = false;
-    }
-    setCopyStatus(ok ? "copied" : "failed");
-    showEmailToast(ok);
-    window.setTimeout(() => setCopyStatus(null), 2500);
-  }, []);
-
-  const saveContact = useCallback(() => {
+  function saveContact() {
     const vcard = [
       "BEGIN:VCARD",
       "VERSION:3.0",
@@ -460,7 +446,7 @@ export function MobileFrame() {
     }
 
     triggerBlobDownload();
-  }, []);
+  }
 
   return (
     <div className="app-texture phone-stage">
@@ -502,7 +488,7 @@ export function MobileFrame() {
                   <ContactCard
                     copyStatus={copyStatus}
                     onCopy={copyEmail}
-                    onEmailClick={handleEmailClick}
+                    onEmailClick={copyEmail}
                     onSave={saveContact}
                   />
                 )}

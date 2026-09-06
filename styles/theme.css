@@ -84,8 +84,8 @@
     0 3px 8px rgb(29 92 189 / 0.34);
   --shadow-card-compact: inset 0 0 20px rgb(212 208 197 / 0.55);
 
-  /* Desktop windows become draggable here. Read at runtime via
-     getDesktopBreakpoint() in DesktopEnvironment.tsx — single source. */
+  /* Desktop windows become draggable here. CSS cannot import TypeScript, so
+     keep this aligned with DESKTOP_MEDIA_QUERY in lib/responsive.ts. */
   --breakpoint-desktop: 900px;
 }
 
