@@ -8,7 +8,6 @@ import { CardIcon, LinkedInIcon, ReposIcon, ResumeIcon, ShellIcon } from "@/comp
 import {
   DOMAIN,
   EMAIL,
-  FOCUS,
   GITHUB_URL,
   GITHUB_USER,
   GRADUATION,
@@ -85,12 +84,10 @@ function ContactCard({
   copyStatus,
   onCopy,
   onEmailClick,
-  onSave,
 }: {
   copyStatus: CopyStatus;
   onCopy: () => void;
   onEmailClick: () => void;
-  onSave: () => void;
 }) {
   const copyLabel =
     copyStatus === "copied"
@@ -123,13 +120,12 @@ function ContactCard({
         </p>
       </article>
       <div className="mobile-card__actions">
-        <button
-          type="button"
-          onClick={onSave}
+        <a
+          href="/contact.vcf"
           className="mobile-secondary mobile-card__action"
         >
           Save contact
-        </button>
+        </a>
         <button
           type="button"
           onClick={onCopy}
@@ -367,87 +363,6 @@ export function MobileFrame() {
     window.setTimeout(() => setCopyStatus(null), 2500);
   }
 
-  function saveContact() {
-    const vcard = [
-      "BEGIN:VCARD",
-      "VERSION:3.0",
-      `FN:${NAME}`,
-      `ORG:${SCHOOL}`,
-      `TITLE:${ROLE}`,
-      `EMAIL:${EMAIL}`,
-      `TEL;TYPE=CELL:${PHONE}`,
-      `URL:${LINKEDIN}`,
-      `URL:${GITHUB_URL}`,
-      `ADR:;;;${LOCATION.replace(", ", ";")};;United States`,
-      `NOTE:${FOCUS} · ${SCHOOL} · graduating ${GRADUATION}`,
-      "END:VCARD",
-    ].join("\r\n");
-
-    const triggerBlobDownload = () => {
-      const blob = new Blob([vcard], { type: "text/vcard;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const isIOS =
-        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
-      // iOS Safari ignores the download attribute — opening the blob lets the
-      // system preview the vCard and offer "Create New Contact" / "Add to Existing".
-      // Must stay synchronous with the user gesture, so no setTimeout before window.open.
-      if (isIOS) {
-        try {
-          window.open(url, "_blank");
-        } catch {
-          window.location.href = url;
-        }
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
-        return;
-      }
-
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = "samuel-molero.vcf";
-      anchor.rel = "noopener";
-      anchor.style.display = "none";
-      document.body.appendChild(anchor);
-      anchor.click();
-      // Keep URL alive briefly so the download can start, then clean up.
-      setTimeout(() => {
-        try {
-          document.body.removeChild(anchor);
-        } catch {}
-        URL.revokeObjectURL(url);
-      }, 1500);
-    };
-
-    // Best UX on mobile: system share sheet with a real .vcf file — iOS/Android
-    // show "Add to Contacts" / "Save to Files" directly. Requires a user gesture.
-    try {
-      const blob = new Blob([vcard], { type: "text/vcard;charset=utf-8" });
-      const file = new File([blob], "samuel-molero.vcf", { type: "text/vcard" });
-      const nav = navigator as Navigator & {
-        canShare?: (data: ShareData & { files?: File[] }) => boolean;
-        share?: (data: ShareData & { files?: File[] }) => Promise<void>;
-      };
-      if (nav.canShare?.({ files: [file] }) && nav.share) {
-        void nav
-          .share({ files: [file], title: NAME, text: `${ROLE} — ${SCHOOL}` })
-          .catch((err: unknown) => {
-            // User dismissal (AbortError) should not trigger a download
-            const name =
-              err && typeof err === "object" && "name" in err
-                ? (err as { name?: string }).name
-                : null;
-            if (name !== "AbortError") triggerBlobDownload();
-          });
-        return;
-      }
-    } catch {
-      // fall through to blob download
-    }
-
-    triggerBlobDownload();
-  }
-
   return (
     <div className="app-texture phone-stage">
       <div className="phone-shell">
@@ -489,7 +404,6 @@ export function MobileFrame() {
                     copyStatus={copyStatus}
                     onCopy={copyEmail}
                     onEmailClick={copyEmail}
-                    onSave={saveContact}
                   />
                 )}
                 {active === "repos" && <ReposTab />}
